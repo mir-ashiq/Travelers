@@ -1,66 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit2, Trash2, Plus, Search, ChevronDown, ChevronUp, AlertCircle, X } from 'lucide-react';
-
-// Mock FAQ data
-const mockFaqs = [
-  {
-    id: 1,
-    question: 'What is the best time to visit Kashmir?',
-    answer: 'The best time to visit Kashmir is from April to October. Spring (April to June) offers blooming gardens, summer (July to August) has pleasant weather, and autumn (September to October) showcases golden landscapes.',
-    category: 'General',
-    published: true
-  },
-  {
-    id: 2,
-    question: 'Do I need special permits for Ladakh?',
-    answer: 'Yes, certain areas in Ladakh require Inner Line Permits (ILP). Our tour packages include obtaining these permits for you, so you don\'t need to worry about the process.',
-    category: 'Permits & Documentation',
-    published: true
-  },
-  {
-    id: 3,
-    question: 'How do I book a tour package?',
-    answer: 'You can book a tour package by filling out the booking form on the package detail page or by contacting us directly via phone or email. No advance payment is required for booking.',
-    category: 'Booking',
-    published: true
-  },
-  {
-    id: 4,
-    question: 'What is your cancellation policy?',
-    answer: 'Our cancellation policy depends on how far in advance you cancel. Cancellations made 30+ days before the trip receive a full refund minus processing fees. Cancellations 15-29 days prior receive a 75% refund, 7-14 days prior receive a 50% refund, and less than 7 days receive no refund.',
-    category: 'Booking',
-    published: true
-  },
-  {
-    id: 5,
-    question: 'Do you offer customized tour packages?',
-    answer: 'Yes, we offer customized tour packages tailored to your preferences, budget, and time constraints. Contact us with your requirements, and we\'ll create a personalized itinerary for you.',
-    category: 'Packages',
-    published: true
-  },
-  {
-    id: 6,
-    question: 'What type of accommodations do you provide?',
-    answer: 'We offer a range of accommodations based on the package you choose, from luxury houseboats and 5-star hotels to mid-range hotels and budget-friendly guesthouses. All accommodations are carefully selected to ensure comfort and quality.',
-    category: 'Accommodations',
-    published: true
-  },
-  {
-    id: 7,
-    question: 'Is it safe to travel to Kashmir and Ladakh?',
-    answer: 'Yes, the tourist areas of Kashmir and Ladakh are safe for travelers. We prioritize the safety of our guests and continuously monitor local conditions. Our guides are well-informed about the regions and safety protocols.',
-    category: 'Safety',
-    published: false
-  }
-];
+import { Edit2, Trash2, Plus, Search, ChevronDown, ChevronUp, AlertCircle, X, Loader } from 'lucide-react';
+import { supabase, FAQ } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const FAQPage = () => {
-  const [faqs, setFaqs] = useState(mockFaqs);
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
-  const [editingFAQ, setEditingFAQ] = useState<any>(null);
+  const [editingFAQ, setEditingFAQ] = useState<FAQ | null>(null);
   const [newFAQ, setNewFAQ] = useState({
     question: '',
     answer: '',
@@ -68,9 +17,37 @@ const FAQPage = () => {
     published: true
   });
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
 
-  // Extract unique categories
-  const categories = [...new Set(faqs.map(faq => faq.category))];
+  // Fetch FAQs from Supabase
+  useEffect(() => {
+    fetchFAQs();
+  }, []);
+
+  const fetchFAQs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('faqs')
+        .select('*')
+        .order('id', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setFaqs(data);
+        // Extract unique categories
+        const uniqueCategories = [...new Set(data.map(faq => faq.category))];
+        setCategories(uniqueCategories);
+      }
+    } catch (error) {
+      console.error('Error fetching FAQs:', error);
+      toast.error('Failed to load FAQs');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter FAQs
   const filteredFAQs = faqs.filter(faq => {
@@ -89,7 +66,7 @@ const FAQPage = () => {
   };
 
   // Start editing FAQ
-  const startEdit = (faq: any) => {
+  const startEdit = (faq: FAQ) => {
     setEditingFAQ({ ...faq });
     setExpandedFAQ(faq.id);
   };
@@ -100,61 +77,116 @@ const FAQPage = () => {
   };
 
   // Save edited FAQ
-  const saveFAQ = () => {
-    if (!editingFAQ.question || !editingFAQ.answer) return;
+  const saveFAQ = async () => {
+    if (!editingFAQ || !editingFAQ.question || !editingFAQ.answer) return;
     
-    setFaqs(faqs.map(faq => faq.id === editingFAQ.id ? editingFAQ : faq));
-    setEditingFAQ(null);
-    
-    // Show success message
-    alert('FAQ updated successfully!');
+    try {
+      const { error } = await supabase
+        .from('faqs')
+        .update({
+          question: editingFAQ.question,
+          answer: editingFAQ.answer,
+          category: editingFAQ.category,
+          published: editingFAQ.published
+        })
+        .eq('id', editingFAQ.id);
+      
+      if (error) throw error;
+      
+      setFaqs(faqs.map(faq => faq.id === editingFAQ.id ? editingFAQ : faq));
+      setEditingFAQ(null);
+      
+      toast.success('FAQ updated successfully');
+    } catch (error) {
+      console.error('Error updating FAQ:', error);
+      toast.error('Failed to update FAQ');
+    }
   };
 
   // Delete FAQ
-  const deleteFAQ = (id: number) => {
-    // In a real app, this would be an API call
+  const deleteFAQ = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
-      setFaqs(faqs.filter(faq => faq.id !== id));
-      
-      // Show success message
-      alert('FAQ deleted successfully!');
+      try {
+        const { error } = await supabase
+          .from('faqs')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        setFaqs(faqs.filter(faq => faq.id !== id));
+        toast.success('FAQ deleted successfully');
+      } catch (error) {
+        console.error('Error deleting FAQ:', error);
+        toast.error('Failed to delete FAQ');
+      }
     }
   };
 
   // Toggle FAQ published status
-  const togglePublished = (id: number) => {
-    setFaqs(faqs.map(faq => {
-      if (faq.id === id) {
-        const updatedFaq = { ...faq, published: !faq.published };
-        // Show success message
-        alert(`FAQ ${updatedFaq.published ? 'published' : 'unpublished'} successfully!`);
-        return updatedFaq;
-      }
-      return faq;
-    }));
+  const togglePublished = async (id: number) => {
+    try {
+      const faqToUpdate = faqs.find(faq => faq.id === id);
+      if (!faqToUpdate) return;
+      
+      const newStatus = !faqToUpdate.published;
+      
+      const { error } = await supabase
+        .from('faqs')
+        .update({ published: newStatus })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setFaqs(faqs.map(faq => {
+        if (faq.id === id) {
+          return { ...faq, published: newStatus };
+        }
+        return faq;
+      }));
+      
+      toast.success(`FAQ ${newStatus ? 'published' : 'unpublished'} successfully`);
+    } catch (error) {
+      console.error('Error updating FAQ status:', error);
+      toast.error('Failed to update FAQ status');
+    }
   };
 
   // Add new FAQ
-  const addNewFAQ = () => {
+  const addNewFAQ = async () => {
     if (!newFAQ.question || !newFAQ.answer) return;
     
-    const newId = Math.max(...faqs.map(faq => faq.id)) + 1;
-    const faqToAdd = {
-      id: newId,
-      ...newFAQ
-    };
-    
-    setFaqs([...faqs, faqToAdd]);
-    setNewFAQ({
-      question: '',
-      answer: '',
-      category: 'General',
-      published: true
-    });
-    setIsAddingNew(false);
-    
-    // Show success message
-    alert('New FAQ added successfully!');
+    try {
+      const { data, error } = await supabase
+        .from('faqs')
+        .insert([
+          {
+            question: newFAQ.question,
+            answer: newFAQ.answer,
+            category: newFAQ.category,
+            published: newFAQ.published
+          }
+        ])
+        .select();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setFaqs([...faqs, ...data]);
+        setNewFAQ({
+          question: '',
+          answer: '',
+          category: 'General',
+          published: true
+        });
+        setIsAddingNew(false);
+        
+        toast.success('New FAQ added successfully');
+      }
+    } catch (error) {
+      console.error('Error adding FAQ:', error);
+      toast.error('Failed to add FAQ');
+    }
   };
 
   // Handle form input change for new FAQ
@@ -177,6 +209,7 @@ const FAQPage = () => {
 
   // Handle form input change for editing FAQ
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    if (!editingFAQ) return;
     const { name, value } = e.target;
     setEditingFAQ({
       ...editingFAQ,
@@ -186,6 +219,7 @@ const FAQPage = () => {
 
   // Handle checkbox change for editing FAQ
   const handleEditCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingFAQ) return;
     const { name, checked } = e.target;
     setEditingFAQ({
       ...editingFAQ,
@@ -361,7 +395,12 @@ const FAQPage = () => {
       
       {/* FAQs List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {filteredFAQs.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader className="animate-spin mr-2" />
+            <span>Loading FAQs...</span>
+          </div>
+        ) : filteredFAQs.length > 0 ? (
           <div className="divide-y divide-gray-200">
             {filteredFAQs.map(faq => (
               <div key={faq.id} className="p-6">

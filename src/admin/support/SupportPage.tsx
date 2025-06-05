@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -12,145 +12,80 @@ import {
   Send,
   ArrowLeft,
   Paperclip,
-  RefreshCw
+  RefreshCw,
+  Loader
 } from 'lucide-react';
-
-// Mock support ticket data
-const mockTickets = [
-  {
-    id: 1001,
-    subject: 'Cancellation request for Kashmir Bliss Package',
-    customer: 'Rahul Sharma',
-    email: 'rahul.s@example.com',
-    status: 'Open',
-    priority: 'High',
-    category: 'Booking',
-    createdAt: '2025-06-01 14:30',
-    assignedTo: 'Zara Khan',
-    lastUpdate: '2025-06-01 14:30',
-    messages: [
-      {
-        id: 1,
-        from: 'customer',
-        name: 'Rahul Sharma',
-        message: 'I need to cancel my Kashmir Bliss tour package booking due to a family emergency. The booking was made last week for travel dates June 15-20, 2025. Please confirm the cancellation policy and the amount that will be refunded.',
-        time: '2025-06-01 14:30'
-      }
-    ]
-  },
-  {
-    id: 1002,
-    subject: 'Request for customization of Ladakh itinerary',
-    customer: 'Priya Singh',
-    email: 'priya.s@example.com',
-    status: 'In Progress',
-    priority: 'Medium',
-    category: 'Customization',
-    createdAt: '2025-05-30 11:15',
-    assignedTo: 'Priya Kaul',
-    lastUpdate: '2025-05-31 09:45',
-    messages: [
-      {
-        id: 1,
-        from: 'customer',
-        name: 'Priya Singh',
-        message: 'I am interested in the Ladakh Adventure package but would like to add an extra day for acclimatization and also include a visit to Tso Moriri lake. Is this possible and what would be the additional cost?',
-        time: '2025-05-30 11:15'
-      },
-      {
-        id: 2,
-        from: 'agent',
-        name: 'Priya Kaul',
-        message: `Hello Priya, thank you for your interest in our Ladakh Adventure package. Yes, we can definitely customize the itinerary to include an extra day for acclimatization and a visit to Tso Moriri lake. The additional cost would be approximately ₹8,000 per person. Would you like me to prepare a detailed customized itinerary for you?`,
-        time: '2025-05-30 14:30'
-      },
-      {
-        id: 3,
-        from: 'customer',
-        name: 'Priya Singh',
-        message: 'That sounds good. Yes, please prepare a detailed itinerary with the changes. Also, would we need any additional permits for Tso Moriri?',
-        time: '2025-05-31 09:45'
-      }
-    ]
-  },
-  {
-    id: 1003,
-    subject: 'Query regarding Gurez Valley tour prerequisites',
-    customer: 'Ajay Patel',
-    email: 'ajay.p@example.com',
-    status: 'Closed',
-    priority: 'Low',
-    category: 'Information',
-    createdAt: '2025-05-25 16:20',
-    assignedTo: 'Raj Gupta',
-    lastUpdate: '2025-05-27 10:10',
-    messages: [
-      {
-        id: 1,
-        from: 'customer',
-        name: 'Ajay Patel',
-        message: 'I am planning to book the Gurez Valley Explorer tour. Are there any specific permits required for Indian citizens? Also, what is the mobile network availability in the region?',
-        time: '2025-05-25 16:20'
-      },
-      {
-        id: 2,
-        from: 'agent',
-        name: 'Raj Gupta',
-        message: `Hello Ajay, thank you for your interest in our Gurez Valley Explorer tour. For Indian citizens, a valid government ID proof is sufficient. However, foreign nationals require an Inner Line Permit. Regarding mobile connectivity, only BSNL network works in some parts of Gurez Valley. We recommend informing your family about limited connectivity during the tour. Let me know if you have any other questions!`,
-        time: '2025-05-26 09:30'
-      },
-      {
-        id: 3,
-        from: 'customer',
-        name: 'Ajay Patel',
-        message: 'Thank you for the information. This is really helpful. I will proceed with the booking soon.',
-        time: '2025-05-26 15:45'
-      },
-      {
-        id: 4,
-        from: 'agent',
-        name: 'Raj Gupta',
-        message: "You're welcome, Ajay! We're excited to have you experience the beautiful Gurez Valley. Feel free to reach out if you have any other questions or when you're ready to book.",
-        time: '2025-05-27 10:10'
-      }
-    ]
-  },
-  {
-    id: 1004,
-    subject: 'Issue with payment for booking #3042',
-    customer: 'Sarah Wilson',
-    email: 'sarah.w@example.com',
-    status: 'Open',
-    priority: 'High',
-    category: 'Payment',
-    createdAt: '2025-06-02 08:15',
-    assignedTo: 'Unassigned',
-    lastUpdate: '2025-06-02 08:15',
-    messages: [
-      {
-        id: 1,
-        from: 'customer',
-        name: 'Sarah Wilson',
-        message: 'I tried to make a payment for my booking #3042 (Jammu Heritage Tour) but the transaction failed twice. However, the amount was debited from my account both times. Please help resolve this issue as soon as possible.',
-        time: '2025-06-02 08:15'
-      }
-    ]
-  }
-];
+import { supabase, SupportTicket, TicketMessage } from '../../lib/supabase';
+import dayjs from 'dayjs';
+import { toast } from 'react-hot-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 const SupportPage = () => {
-  const [tickets, setTickets] = useState(mockTickets);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [filteredTickets, setFilteredTickets] = useState(tickets);
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [filteredTickets, setFilteredTickets] = useState<SupportTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<TicketMessage[]>([]);
   const [replyMessage, setReplyMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Fetch tickets from the database
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('support_tickets')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setTickets(data);
+        setFilteredTickets(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      toast.error('Failed to load support tickets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch messages for a ticket
+  const fetchTicketMessages = async (ticketId: number) => {
+    try {
+      setMessagesLoading(true);
+      const { data, error } = await supabase
+        .from('ticket_messages')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setTicketMessages(data);
+      }
+    } catch (error) {
+      console.error('Error fetching ticket messages:', error);
+      toast.error('Failed to load messages');
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
   
   // Apply filters
-  React.useEffect(() => {
+  useEffect(() => {
     let results = [...tickets];
     
     if (searchTerm) {
@@ -185,101 +120,190 @@ const SupportPage = () => {
   };
 
   // View ticket details
-  const viewTicketDetails = (ticket: any) => {
+  const viewTicketDetails = async (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
+    await fetchTicketMessages(ticket.id);
   };
 
   // Close ticket details
   const closeTicketDetails = () => {
     setSelectedTicket(null);
+    setTicketMessages([]);
     setReplyMessage('');
   };
 
   // Handle sending a reply
-  const handleSendReply = () => {
-    if (!replyMessage.trim()) return;
+  const handleSendReply = async () => {
+    if (!replyMessage.trim() || !selectedTicket) return;
     
-    // Create a new message
-    const newMessage = {
-      id: selectedTicket.messages.length + 1,
-      from: 'agent',
-      name: 'Admin User',
-      message: replyMessage,
-      time: new Date().toLocaleString()
-    };
-    
-    // Create an updated ticket with the new message
-    const updatedTicket = {
-      ...selectedTicket,
-      messages: [...selectedTicket.messages, newMessage],
-      lastUpdate: new Date().toLocaleString(),
-      status: 'In Progress' // Automatically change status to In Progress when replying
-    };
-    
-    // Update the tickets state
-    setTickets(tickets.map(ticket => 
-      ticket.id === selectedTicket.id ? updatedTicket : ticket
-    ));
-    
-    // Update the selected ticket
-    setSelectedTicket(updatedTicket);
-    
-    // Clear the reply message
-    setReplyMessage('');
-    
-    // Show success message
-    alert('Reply sent successfully!');
+    try {
+      // First, insert the new message
+      const { data: messageData, error: messageError } = await supabase
+        .from('ticket_messages')
+        .insert([
+          {
+            ticket_id: selectedTicket.id,
+            from_type: 'agent',
+            name: 'Admin User',
+            message: replyMessage,
+            created_at: new Date().toISOString()
+          }
+        ])
+        .select();
+      
+      if (messageError) throw messageError;
+      
+      // Then, update the ticket status and last_update
+      const { error: ticketError } = await supabase
+        .from('support_tickets')
+        .update({
+          status: 'In Progress',
+          last_update: new Date().toISOString()
+        })
+        .eq('id', selectedTicket.id);
+      
+      if (ticketError) throw ticketError;
+      
+      // Update the local state
+      if (messageData) {
+        // Update ticket messages
+        setTicketMessages([...ticketMessages, ...messageData]);
+        
+        // Update selected ticket
+        const updatedTicket = {
+          ...selectedTicket,
+          status: 'In Progress',
+          last_update: new Date().toISOString()
+        };
+        setSelectedTicket(updatedTicket);
+        
+        // Update tickets list
+        setTickets(tickets.map(ticket => 
+          ticket.id === selectedTicket.id ? updatedTicket : ticket
+        ));
+      }
+      
+      // Clear the reply message
+      setReplyMessage('');
+      
+      toast.success('Reply sent successfully');
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast.error('Failed to send reply');
+    }
   };
 
   // Change ticket status
-  const changeTicketStatus = (id: number, status: string) => {
-    // Update the tickets state
-    setTickets(tickets.map(ticket => {
-      if (ticket.id === id) {
-        // Show success message
-        alert(`Ticket status changed to ${status}!`);
-        return {...ticket, status, lastUpdate: new Date().toLocaleString()};
-      }
-      return ticket;
-    }));
-    
-    // Update selected ticket if it's the one being modified
-    if (selectedTicket && selectedTicket.id === id) {
-      setSelectedTicket({
-        ...selectedTicket, 
-        status,
-        lastUpdate: new Date().toLocaleString()
+  const changeTicketStatus = async (id: number, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('support_tickets')
+        .update({
+          status: status,
+          last_update: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update tickets list
+      const updatedTickets = tickets.map(ticket => {
+        if (ticket.id === id) {
+          return {...ticket, status, last_update: new Date().toISOString()};
+        }
+        return ticket;
       });
+      setTickets(updatedTickets);
+      
+      // Update selected ticket if it's the one being modified
+      if (selectedTicket && selectedTicket.id === id) {
+        setSelectedTicket({
+          ...selectedTicket,
+          status: status as any,
+          last_update: new Date().toISOString()
+        });
+      }
+      
+      toast.success(`Ticket status changed to ${status}`);
+    } catch (error) {
+      console.error('Error changing ticket status:', error);
+      toast.error('Failed to update ticket status');
     }
   };
 
   // Assign ticket
-  const assignTicket = (id: number, assignee: string) => {
-    setTickets(tickets.map(ticket => {
-      if (ticket.id === id) {
-        // Show success message
-        alert(`Ticket assigned to ${assignee}!`);
-        return {...ticket, assignedTo: assignee, lastUpdate: new Date().toLocaleString()};
-      }
-      return ticket;
-    }));
-    
-    if (selectedTicket && selectedTicket.id === id) {
-      setSelectedTicket({
-        ...selectedTicket, 
-        assignedTo: assignee,
-        lastUpdate: new Date().toLocaleString()
+  const assignTicket = async (id: number, assignee: string) => {
+    try {
+      const { error } = await supabase
+        .from('support_tickets')
+        .update({
+          assigned_to: assignee,
+          last_update: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update tickets list
+      const updatedTickets = tickets.map(ticket => {
+        if (ticket.id === id) {
+          return {...ticket, assigned_to: assignee, last_update: new Date().toISOString()};
+        }
+        return ticket;
       });
+      setTickets(updatedTickets);
+      
+      // Update selected ticket if it's the one being modified
+      if (selectedTicket && selectedTicket.id === id) {
+        setSelectedTicket({
+          ...selectedTicket,
+          assigned_to: assignee,
+          last_update: new Date().toISOString()
+        });
+      }
+      
+      toast.success(`Ticket assigned to ${assignee}`);
+    } catch (error) {
+      console.error('Error assigning ticket:', error);
+      toast.error('Failed to assign ticket');
     }
   };
 
   // Function to refresh data
-  const refreshData = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      alert('Data refreshed successfully!');
-    }, 800);
+  const refreshData = async () => {
+    setRefreshing(true);
+    await fetchTickets();
+    
+    // If a ticket is selected, refresh its messages too
+    if (selectedTicket) {
+      await fetchTicketMessages(selectedTicket.id);
+      
+      // Get the updated ticket data
+      try {
+        const { data, error } = await supabase
+          .from('support_tickets')
+          .select('*')
+          .eq('id', selectedTicket.id)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data) {
+          setSelectedTicket(data);
+        }
+      } catch (error) {
+        console.error('Error refreshing ticket details:', error);
+      }
+    }
+    
+    toast.success('Data refreshed successfully');
+    setRefreshing(false);
+  };
+
+  // Format date for display
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    return dayjs(dateString).format('YYYY-MM-DD HH:mm');
   };
 
   // Get status color class
@@ -332,9 +356,10 @@ const SupportPage = () => {
           <button
             className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
             onClick={refreshData}
+            disabled={refreshing}
           >
-            <RefreshCw size={18} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw size={18} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -557,40 +582,51 @@ const SupportPage = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Created</p>
-                  <p className="font-medium">{selectedTicket.createdAt}</p>
+                  <p className="font-medium">{formatDate(selectedTicket.created_at)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Assigned To</p>
-                  <p className="font-medium">{selectedTicket.assignedTo || 'Unassigned'}</p>
+                  <p className="font-medium">{selectedTicket.assigned_to || 'Unassigned'}</p>
                 </div>
               </div>
             </div>
             
             <div className="border-t border-gray-200 pt-6 space-y-6">
-              {selectedTicket.messages.map((message: any) => (
-                <div 
-                  key={message.id} 
-                  className={`flex ${message.from === 'customer' ? 'justify-start' : 'justify-end'}`}
-                >
-                  <div className={`max-w-3xl ${
-                    message.from === 'customer' 
-                      ? 'bg-gray-100 text-gray-800' 
-                      : 'bg-primary-50 text-gray-800'
-                  } p-4 rounded-lg`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="font-medium flex items-center">
-                        <User size={16} className="mr-2" />
-                        {message.name}
-                        <span className="text-xs ml-2 text-gray-500">
-                          {message.from === 'customer' ? '(Customer)' : '(Agent)'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500">{message.time}</div>
-                    </div>
-                    <p className="text-gray-700">{message.message}</p>
-                  </div>
+              {messagesLoading ? (
+                <div className="flex justify-center p-12">
+                  <Loader className="animate-spin mr-2" />
+                  <span>Loading messages...</span>
                 </div>
-              ))}
+              ) : ticketMessages.length > 0 ? (
+                ticketMessages.map((message) => (
+                  <div 
+                    key={message.id} 
+                    className={`flex ${message.from_type === 'customer' ? 'justify-start' : 'justify-end'}`}
+                  >
+                    <div className={`max-w-3xl ${
+                      message.from_type === 'customer' 
+                        ? 'bg-gray-100 text-gray-800' 
+                        : 'bg-primary-50 text-gray-800'
+                    } p-4 rounded-lg`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="font-medium flex items-center">
+                          <User size={16} className="mr-2" />
+                          {message.name}
+                          <span className="text-xs ml-2 text-gray-500">
+                            {message.from_type === 'customer' ? '(Customer)' : '(Agent)'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">{formatDate(message.created_at)}</div>
+                      </div>
+                      <p className="text-gray-700">{message.message}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No messages found for this ticket
+                </div>
+              )}
             </div>
             
             {selectedTicket.status !== 'Closed' && (
@@ -662,74 +698,83 @@ const SupportPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredTickets.map(ticket => (
-                  <tr key={ticket.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4">
-                      <button 
-                        className="font-medium text-primary-600 hover:text-primary-800 text-left"
-                        onClick={() => viewTicketDetails(ticket)}
-                      >
-                        #{ticket.id} - {ticket.subject}
-                      </button>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Created: {ticket.createdAt}
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <Loader size={40} className="text-gray-400 mb-2 animate-spin" />
+                        <h3 className="text-lg font-medium text-gray-900">Loading tickets...</h3>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium">{ticket.customer}</div>
-                      <div className="text-xs text-gray-500">{ticket.email}</div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                        {ticket.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                        {ticket.priority}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {ticket.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {ticket.lastUpdate}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right space-x-2">
-                      <button 
-                        className="text-primary-600 hover:text-primary-900"
-                        onClick={() => viewTicketDetails(ticket)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      {ticket.status !== 'Closed' && (
-                        <button 
-                          className="text-green-600 hover:text-green-900"
-                          onClick={() => changeTicketStatus(ticket.id, 'Closed')}
-                          title="Mark as Resolved"
-                        >
-                          <CheckCircle size={18} />
-                        </button>
-                      )}
-                      {ticket.status === 'Closed' && (
-                        <button 
-                          className="text-yellow-600 hover:text-yellow-900"
-                          onClick={() => changeTicketStatus(ticket.id, 'Open')}
-                          title="Reopen Ticket"
-                        >
-                          <AlertCircle size={18} />
-                        </button>
-                      )}
-                    </td>
                   </tr>
-                ))}
-                
-                {filteredTickets.length === 0 && (
+                ) : filteredTickets.length > 0 ? (
+                  filteredTickets.map(ticket => (
+                    <tr key={ticket.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4">
+                        <button 
+                          className="font-medium text-primary-600 hover:text-primary-800 text-left"
+                          onClick={() => viewTicketDetails(ticket)}
+                        >
+                          #{ticket.id} - {ticket.subject}
+                        </button>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Created: {formatDate(ticket.created_at)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="font-medium">{ticket.customer}</div>
+                        <div className="text-xs text-gray-500">{ticket.email}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                          {ticket.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                          {ticket.priority}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {ticket.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(ticket.last_update)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-right space-x-2">
+                        <button 
+                          className="text-primary-600 hover:text-primary-900"
+                          onClick={() => viewTicketDetails(ticket)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        {ticket.status !== 'Closed' && (
+                          <button 
+                            className="text-green-600 hover:text-green-900"
+                            onClick={() => changeTicketStatus(ticket.id, 'Closed')}
+                            title="Mark as Resolved"
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                        )}
+                        {ticket.status === 'Closed' && (
+                          <button 
+                            className="text-yellow-600 hover:text-yellow-900"
+                            onClick={() => changeTicketStatus(ticket.id, 'Open')}
+                            title="Reopen Ticket"
+                          >
+                            <AlertCircle size={18} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center">
                       <div className="flex flex-col items-center justify-center">
