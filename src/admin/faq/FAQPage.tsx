@@ -14,7 +14,7 @@ const mockFaqs = [
   {
     id: 2,
     question: 'Do I need special permits for Ladakh?',
-    answer: 'Yes, certain areas in Ladakh require Inner Line Permits (ILP). Our tour packages include obtaining these permits for you, so you don't need to worry about the process.',
+    answer: 'Yes, certain areas in Ladakh require Inner Line Permits (ILP). Our tour packages include obtaining these permits for you, so you don\'t need to worry about the process.',
     category: 'Permits & Documentation',
     published: true
   },
@@ -35,7 +35,7 @@ const mockFaqs = [
   {
     id: 5,
     question: 'Do you offer customized tour packages?',
-    answer: 'Yes, we offer customized tour packages tailored to your preferences, budget, and time constraints. Contact us with your requirements, and we'll create a personalized itinerary for you.',
+    answer: 'Yes, we offer customized tour packages tailored to your preferences, budget, and time constraints. Contact us with your requirements, and we\'ll create a personalized itinerary for you.',
     category: 'Packages',
     published: true
   },
@@ -332,7 +332,7 @@ const FAQPage = () => {
                   // Edit Mode
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="edit-question" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="edit-question\" className="block text-sm font-medium text-gray-700 mb-1">
                         Question
                       </label>
                       <input

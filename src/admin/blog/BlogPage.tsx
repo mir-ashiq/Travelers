@@ -20,7 +20,7 @@ const mockPosts = [
   {
     id: 1,
     title: 'Top 10 Must-Visit Places in Kashmir Valley',
-    excerpt: 'Discover the breathtaking beauty of Kashmir with our guide to the top 10 destinations that should be on every traveler's bucket list.',
+    excerpt: 'Discover the breathtaking beauty of Kashmir with our guide to the top 10 destinations that should be on every traveler\'s bucket list.',
     featuredImage: 'https://images.pexels.com/photos/11038549/pexels-photo-11038549.jpeg?auto=compress&cs=tinysrgb&w=300',
     author: 'Priya Kaul',
     date: '2025-05-15',
