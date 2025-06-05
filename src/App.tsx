@@ -26,6 +26,10 @@ import NewGalleryPage from './admin/gallery/NewGalleryPage';
 import UsersAdmin from './admin/users/UsersPage';
 import NewUserPage from './admin/users/NewUserPage';
 import SettingsAdmin from './admin/settings/SettingsPage';
+import ReportsPage from './admin/reports/ReportsPage';
+import SupportPage from './admin/support/SupportPage';
+import FAQPage from './admin/faq/FAQPage';
+import BlogPage from './admin/blog/BlogPage';
 import Login from './admin/Login';
 
 // Auth guard for admin routes
@@ -74,14 +78,20 @@ function App() {
         {/* Testimonials Routes */}
         <Route path="testimonials" element={<TestimonialsAdmin />} />
         
+        {/* Reports Route */}
+        <Route path="reports" element={<ReportsPage />} />
+        
+        {/* Support Route */}
+        <Route path="support" element={<SupportPage />} />
+        
+        {/* FAQ Route */}
+        <Route path="faq" element={<FAQPage />} />
+        
+        {/* Blog Route */}
+        <Route path="blog" element={<BlogPage />} />
+        
         {/* Settings Route */}
         <Route path="settings" element={<SettingsAdmin />} />
-        
-        {/* Placeholder routes - replace with actual components when implemented */}
-        <Route path="reports" element={<Dashboard />} />
-        <Route path="support" element={<Dashboard />} />
-        <Route path="faq" element={<Dashboard />} />
-        <Route path="blog" element={<Dashboard />} />
         
         {/* Catch-all route for admin panel */}
         <Route path="*" element={<Dashboard />} />
