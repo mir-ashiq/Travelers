@@ -61,7 +61,7 @@ const mockTickets = [
         id: 2,
         from: 'agent',
         name: 'Priya Kaul',
-        message: 'Hello Priya, thank you for your interest in our Ladakh Adventure package. Yes, we can definitely customize the itinerary to include an extra day for acclimatization and a visit to Tso Moriri lake. The additional cost would be approximately ₹8,000 per person. Would you like me to prepare a detailed customized itinerary for you?',
+        message: `Hello Priya, thank you for your interest in our Ladakh Adventure package. Yes, we can definitely customize the itinerary to include an extra day for acclimatization and a visit to Tso Moriri lake. The additional cost would be approximately ₹8,000 per person. Would you like me to prepare a detailed customized itinerary for you?`,
         time: '2025-05-30 14:30'
       },
       {
@@ -96,7 +96,7 @@ const mockTickets = [
         id: 2,
         from: 'agent',
         name: 'Raj Gupta',
-        message: 'Hello Ajay, thank you for your interest in our Gurez Valley Explorer tour. For Indian citizens, a valid government ID proof is sufficient. However, foreign nationals require an Inner Line Permit. Regarding mobile connectivity, only BSNL network works in some parts of Gurez Valley. We recommend informing your family about limited connectivity during the tour. Let me know if you have any other questions!',
+        message: `Hello Ajay, thank you for your interest in our Gurez Valley Explorer tour. For Indian citizens, a valid government ID proof is sufficient. However, foreign nationals require an Inner Line Permit. Regarding mobile connectivity, only BSNL network works in some parts of Gurez Valley. We recommend informing your family about limited connectivity during the tour. Let me know if you have any other questions!`,
         time: '2025-05-26 09:30'
       },
       {
@@ -110,7 +110,7 @@ const mockTickets = [
         id: 4,
         from: 'agent',
         name: 'Raj Gupta',
-        message: 'You're welcome, Ajay! We're excited to have you experience the beautiful Gurez Valley. Feel free to reach out if you have any other questions or when you're ready to book.',
+        message: "You're welcome, Ajay! We're excited to have you experience the beautiful Gurez Valley. Feel free to reach out if you have any other questions or when you're ready to book.",
         time: '2025-05-27 10:10'
       }
     ]
@@ -139,18 +139,19 @@ const mockTickets = [
 ];
 
 const SupportPage = () => {
+  const [tickets, setTickets] = useState(mockTickets);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [filteredTickets, setFilteredTickets] = useState(mockTickets);
+  const [filteredTickets, setFilteredTickets] = useState(tickets);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [loading, setLoading] = useState(false);
   
   // Apply filters
   React.useEffect(() => {
-    let results = [...mockTickets];
+    let results = [...tickets];
     
     if (searchTerm) {
       results = results.filter(ticket => 
@@ -173,7 +174,7 @@ const SupportPage = () => {
     }
     
     setFilteredTickets(results);
-  }, [searchTerm, statusFilter, priorityFilter, categoryFilter]);
+  }, [searchTerm, statusFilter, priorityFilter, categoryFilter, tickets]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -198,7 +199,7 @@ const SupportPage = () => {
   const handleSendReply = () => {
     if (!replyMessage.trim()) return;
     
-    // In a real app, this would send the reply to an API
+    // Create a new message
     const newMessage = {
       id: selectedTicket.messages.length + 1,
       from: 'agent',
@@ -207,47 +208,68 @@ const SupportPage = () => {
       time: new Date().toLocaleString()
     };
     
+    // Create an updated ticket with the new message
     const updatedTicket = {
       ...selectedTicket,
       messages: [...selectedTicket.messages, newMessage],
-      lastUpdate: new Date().toLocaleString()
+      lastUpdate: new Date().toLocaleString(),
+      status: 'In Progress' // Automatically change status to In Progress when replying
     };
     
-    // Update the selected ticket and the tickets list
+    // Update the tickets state
+    setTickets(tickets.map(ticket => 
+      ticket.id === selectedTicket.id ? updatedTicket : ticket
+    ));
+    
+    // Update the selected ticket
     setSelectedTicket(updatedTicket);
-    setFilteredTickets(prev => 
-      prev.map(ticket => 
-        ticket.id === selectedTicket.id ? updatedTicket : ticket
-      )
-    );
     
     // Clear the reply message
     setReplyMessage('');
+    
+    // Show success message
+    alert('Reply sent successfully!');
   };
 
   // Change ticket status
   const changeTicketStatus = (id: number, status: string) => {
-    setFilteredTickets(prev => 
-      prev.map(ticket => 
-        ticket.id === id ? {...ticket, status} : ticket
-      )
-    );
+    // Update the tickets state
+    setTickets(tickets.map(ticket => {
+      if (ticket.id === id) {
+        // Show success message
+        alert(`Ticket status changed to ${status}!`);
+        return {...ticket, status, lastUpdate: new Date().toLocaleString()};
+      }
+      return ticket;
+    }));
     
+    // Update selected ticket if it's the one being modified
     if (selectedTicket && selectedTicket.id === id) {
-      setSelectedTicket({...selectedTicket, status});
+      setSelectedTicket({
+        ...selectedTicket, 
+        status,
+        lastUpdate: new Date().toLocaleString()
+      });
     }
   };
 
   // Assign ticket
   const assignTicket = (id: number, assignee: string) => {
-    setFilteredTickets(prev => 
-      prev.map(ticket => 
-        ticket.id === id ? {...ticket, assignedTo: assignee} : ticket
-      )
-    );
+    setTickets(tickets.map(ticket => {
+      if (ticket.id === id) {
+        // Show success message
+        alert(`Ticket assigned to ${assignee}!`);
+        return {...ticket, assignedTo: assignee, lastUpdate: new Date().toLocaleString()};
+      }
+      return ticket;
+    }));
     
     if (selectedTicket && selectedTicket.id === id) {
-      setSelectedTicket({...selectedTicket, assignedTo: assignee});
+      setSelectedTicket({
+        ...selectedTicket, 
+        assignedTo: assignee,
+        lastUpdate: new Date().toLocaleString()
+      });
     }
   };
 
@@ -256,6 +278,7 @@ const SupportPage = () => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
+      alert('Data refreshed successfully!');
     }, 800);
   };
 
@@ -286,6 +309,17 @@ const SupportPage = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Available agents for assignment
+  const agents = [
+    { id: 1, name: 'Priya Kaul' },
+    { id: 2, name: 'Raj Gupta' },
+    { id: 3, name: 'Zara Khan' },
+    { id: 4, name: 'Aarav Sharma' }
+  ];
+  
+  // State for assignment dropdown
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
 
   return (
     <div>
@@ -390,7 +424,7 @@ const SupportPage = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-500">All Tickets</p>
-              <p className="text-2xl font-bold">{mockTickets.length}</p>
+              <p className="text-2xl font-bold">{tickets.length}</p>
             </div>
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
               <MessageSquare size={20} />
@@ -402,7 +436,7 @@ const SupportPage = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-500">Open</p>
-              <p className="text-2xl font-bold text-yellow-600">{mockTickets.filter(t => t.status === 'Open').length}</p>
+              <p className="text-2xl font-bold text-yellow-600">{tickets.filter(t => t.status === 'Open').length}</p>
             </div>
             <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
               <AlertCircle size={20} />
@@ -414,7 +448,7 @@ const SupportPage = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-500">In Progress</p>
-              <p className="text-2xl font-bold text-blue-600">{mockTickets.filter(t => t.status === 'In Progress').length}</p>
+              <p className="text-2xl font-bold text-blue-600">{tickets.filter(t => t.status === 'In Progress').length}</p>
             </div>
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
               <Clock size={20} />
@@ -426,7 +460,7 @@ const SupportPage = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-500">Closed</p>
-              <p className="text-2xl font-bold text-green-600">{mockTickets.filter(t => t.status === 'Closed').length}</p>
+              <p className="text-2xl font-bold text-green-600">{tickets.filter(t => t.status === 'Closed').length}</p>
             </div>
             <div className="p-3 rounded-full bg-green-100 text-green-600">
               <CheckCircle size={20} />
@@ -449,11 +483,32 @@ const SupportPage = () => {
             
             <div className="flex space-x-2">
               <div className="relative">
-                <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 inline-flex items-center">
+                <button 
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 inline-flex items-center"
+                  onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+                >
                   Assign
                   <ChevronDown size={16} className="ml-2" />
                 </button>
-                {/* Dropdown would go here */}
+                
+                {showAssignDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-20">
+                    <div className="py-1">
+                      {agents.map(agent => (
+                        <button
+                          key={agent.id}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => {
+                            assignTicket(selectedTicket.id, agent.name);
+                            setShowAssignDropdown(false);
+                          }}
+                        >
+                          {agent.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               {selectedTicket.status !== 'Closed' ? (

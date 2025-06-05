@@ -101,8 +101,13 @@ const FAQPage = () => {
 
   // Save edited FAQ
   const saveFAQ = () => {
+    if (!editingFAQ.question || !editingFAQ.answer) return;
+    
     setFaqs(faqs.map(faq => faq.id === editingFAQ.id ? editingFAQ : faq));
     setEditingFAQ(null);
+    
+    // Show success message
+    alert('FAQ updated successfully!');
   };
 
   // Delete FAQ
@@ -110,18 +115,29 @@ const FAQPage = () => {
     // In a real app, this would be an API call
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
       setFaqs(faqs.filter(faq => faq.id !== id));
+      
+      // Show success message
+      alert('FAQ deleted successfully!');
     }
   };
 
   // Toggle FAQ published status
   const togglePublished = (id: number) => {
-    setFaqs(faqs.map(faq => 
-      faq.id === id ? { ...faq, published: !faq.published } : faq
-    ));
+    setFaqs(faqs.map(faq => {
+      if (faq.id === id) {
+        const updatedFaq = { ...faq, published: !faq.published };
+        // Show success message
+        alert(`FAQ ${updatedFaq.published ? 'published' : 'unpublished'} successfully!`);
+        return updatedFaq;
+      }
+      return faq;
+    }));
   };
 
   // Add new FAQ
   const addNewFAQ = () => {
+    if (!newFAQ.question || !newFAQ.answer) return;
+    
     const newId = Math.max(...faqs.map(faq => faq.id)) + 1;
     const faqToAdd = {
       id: newId,
@@ -136,6 +152,9 @@ const FAQPage = () => {
       published: true
     });
     setIsAddingNew(false);
+    
+    // Show success message
+    alert('New FAQ added successfully!');
   };
 
   // Handle form input change for new FAQ
@@ -147,12 +166,30 @@ const FAQPage = () => {
     });
   };
 
+  // Handle checkbox change for new FAQ
+  const handleNewFAQCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setNewFAQ({
+      ...newFAQ,
+      [name]: checked
+    });
+  };
+
   // Handle form input change for editing FAQ
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setEditingFAQ({
       ...editingFAQ,
       [name]: value
+    });
+  };
+
+  // Handle checkbox change for editing FAQ
+  const handleEditCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setEditingFAQ({
+      ...editingFAQ,
+      [name]: checked
     });
   };
 
@@ -292,7 +329,7 @@ const FAQPage = () => {
                   id="published"
                   name="published"
                   checked={newFAQ.published}
-                  onChange={(e) => setNewFAQ({...newFAQ, published: e.target.checked})}
+                  onChange={handleNewFAQCheckboxChange}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
                 <label htmlFor="published" className="ml-2 block text-sm text-gray-700">
@@ -332,7 +369,7 @@ const FAQPage = () => {
                   // Edit Mode
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="edit-question\" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="edit-question" className="block text-sm font-medium text-gray-700 mb-1">
                         Question
                       </label>
                       <input
@@ -387,7 +424,7 @@ const FAQPage = () => {
                           id="edit-published"
                           name="published"
                           checked={editingFAQ.published}
-                          onChange={(e) => setEditingFAQ({...editingFAQ, published: e.target.checked})}
+                          onChange={handleEditCheckboxChange}
                           className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                         />
                         <label htmlFor="edit-published" className="ml-2 block text-sm text-gray-700">
@@ -437,12 +474,14 @@ const FAQPage = () => {
                           <button 
                             className="text-indigo-600 hover:text-indigo-900 p-1"
                             onClick={() => startEdit(faq)}
+                            title="Edit FAQ"
                           >
                             <Edit2 size={18} />
                           </button>
                           <button 
                             className="text-red-600 hover:text-red-900 p-1"
                             onClick={() => deleteFAQ(faq.id)}
+                            title="Delete FAQ"
                           >
                             <Trash2 size={18} />
                           </button>
