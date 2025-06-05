@@ -1,13 +1,54 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Make sure we have valid URL values before creating the client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase credentials are missing. Please connect to Supabase from the UI.');
+// Validate URL format before creating client
+let supabase;
+
+try {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase credentials are missing. Please connect to Supabase from the UI.');
+    // Create a dummy client that will be replaced later
+    supabase = {
+      from: () => ({
+        select: () => Promise.resolve({ data: [], error: new Error('No Supabase connection') }),
+        insert: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
+        update: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
+        delete: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
+      }),
+      auth: {
+        signIn: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
+        signUp: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
+        signOut: () => Promise.resolve({ error: null }),
+      },
+    };
+  } else {
+    // Validate URL format by attempting to construct a URL object
+    new URL(supabaseUrl);
+    // If URL is valid, create the client
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+  }
+} catch (error) {
+  console.error('Invalid Supabase URL:', error);
+  // Create a dummy client that will be replaced later
+  supabase = {
+    from: () => ({
+      select: () => Promise.resolve({ data: [], error: new Error('Invalid Supabase URL') }),
+      insert: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
+      update: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
+      delete: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
+    }),
+    auth: {
+      signIn: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
+      signUp: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
+  };
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase };
 
 // Type definitions for database tables
 export type FAQ = {
