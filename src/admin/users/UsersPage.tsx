@@ -1,74 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit2, Trash2, Eye, Plus, Search, Filter, AlertCircle, Mail, Phone, UserPlus, CheckCircle, XCircle, X } from 'lucide-react';
-
-// Mock user data
-const mockUsers = [
-  {
-    id: 1,
-    name: 'Aarav Sharma',
-    email: 'aarav.s@jklgtravel.com',
-    phone: '+91 9876543210',
-    role: 'Admin',
-    status: 'Active',
-    avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100',
-    lastLogin: '2025-06-01 14:30'
-  },
-  {
-    id: 2,
-    name: 'Priya Kaul',
-    email: 'priya.k@jklgtravel.com',
-    phone: '+91 9876543211',
-    role: 'Manager',
-    status: 'Active',
-    avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100',
-    lastLogin: '2025-06-01 09:45'
-  },
-  {
-    id: 3,
-    name: 'Raj Gupta',
-    email: 'raj.g@jklgtravel.com',
-    phone: '+91 9876543212',
-    role: 'Guide',
-    status: 'Active',
-    avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=100',
-    lastLogin: '2025-05-30 11:20'
-  },
-  {
-    id: 4,
-    name: 'Zara Khan',
-    email: 'zara.k@jklgtravel.com',
-    phone: '+91 9876543213',
-    role: 'Support',
-    status: 'Active',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100',
-    lastLogin: '2025-06-01 16:10'
-  },
-  {
-    id: 5,
-    name: 'Arjun Patel',
-    email: 'arjun.p@jklgtravel.com',
-    phone: '+91 9876543214',
-    role: 'Guide',
-    status: 'Inactive',
-    avatar: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=100',
-    lastLogin: '2025-05-15 10:30'
-  }
-];
+import { Edit2, Trash2, Eye, Plus, Search, Filter, AlertCircle, Mail, Phone, UserPlus, CheckCircle, XCircle, X, Loader } from 'lucide-react';
+import { supabase, AdminUser } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [filteredUsers, setFilteredUsers] = useState(mockUsers);
-  const [selectedUser, setSelectedUser] = useState<typeof mockUsers[0] | null>(null);
+  const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch users from the database
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('*')
+        .order('id', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setUsers(data);
+        setFilteredUsers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Extract unique roles from users
-  const roles = [...new Set(mockUsers.map(user => user.role))];
+  const roles = [...new Set(users.map(user => user.role))];
 
   // Apply filters
-  React.useEffect(() => {
-    let results = [...mockUsers];
+  useEffect(() => {
+    let results = [...users];
     
     if (searchTerm) {
       results = results.filter(user => 
@@ -87,13 +64,71 @@ const UsersPage = () => {
     }
     
     setFilteredUsers(results);
-  }, [searchTerm, roleFilter, statusFilter]);
+  }, [searchTerm, roleFilter, statusFilter, users]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
     setRoleFilter('');
     setStatusFilter('');
+  };
+
+  // Format date for display
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleString();
+  };
+
+  // Delete user
+  const deleteUser = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        const { error } = await supabase
+          .from('admin_users')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        setUsers(users.filter(user => user.id !== id));
+        toast.success('User deleted successfully');
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        toast.error('Failed to delete user');
+      }
+    }
+  };
+
+  // Toggle user status
+  const toggleUserStatus = async (id: number, currentStatus: 'Active' | 'Inactive') => {
+    try {
+      const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+      
+      const { error } = await supabase
+        .from('admin_users')
+        .update({ status: newStatus })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setUsers(users.map(user => {
+        if (user.id === id) {
+          return {...user, status: newStatus};
+        }
+        return user;
+      }));
+      
+      // Update selected user if it's the one being modified
+      if (selectedUser && selectedUser.id === id) {
+        setSelectedUser({...selectedUser, status: newStatus});
+      }
+      
+      toast.success(`User ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      toast.error('Failed to update user status');
+    }
   };
 
   return (
@@ -178,102 +213,119 @@ const UsersPage = () => {
       {/* Users Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Login
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredUsers.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <img 
-                        src={user.avatar} 
-                        alt={user.name} 
-                        className="w-10 h-10 rounded-full object-cover mr-3"
-                      />
-                      <div className="font-medium text-gray-900">{user.name}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <Mail size={14} className="mr-1" />
-                      {user.email}
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <Phone size={14} className="mr-1" />
-                      {user.phone}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.role === 'Admin' ? 'bg-purple-100 text-purple-800' :
-                      user.role === 'Manager' ? 'bg-blue-100 text-blue-800' :
-                      user.role === 'Guide' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLogin}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button 
-                      className="text-primary-600 hover:text-primary-900"
-                      onClick={() => setSelectedUser(user)}
-                    >
-                      <Eye size={18} />
-                    </button>
-                    <button className="text-indigo-600 hover:text-indigo-900">
-                      <Edit2 size={18} />
-                    </button>
-                    <button className="text-red-600 hover:text-red-900">
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center p-12">
+              <Loader size={40} className="animate-spin text-primary-600 mr-3" />
+              <span className="text-lg">Loading users...</span>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Login
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-              
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <AlertCircle size={40} className="text-gray-400 mb-2" />
-                      <h3 className="text-lg font-medium text-gray-900">No users found</h3>
-                      <p className="text-gray-500">Try adjusting your search or filters</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map(user => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <img 
+                            src={user.avatar || "https://via.placeholder.com/40"} 
+                            alt={user.name} 
+                            className="w-10 h-10 rounded-full object-cover mr-3"
+                            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/40")}
+                          />
+                          <div className="font-medium text-gray-900">{user.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-600 flex items-center">
+                          <Mail size={14} className="mr-1" />
+                          {user.email}
+                        </div>
+                        <div className="text-sm text-gray-600 flex items-center">
+                          <Phone size={14} className="mr-1" />
+                          {user.phone}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          user.role === 'Admin' ? 'bg-purple-100 text-purple-800' :
+                          user.role === 'Manager' ? 'bg-blue-100 text-blue-800' :
+                          user.role === 'Guide' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => toggleUserStatus(user.id, user.status)}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {user.status}
+                        </button>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(user.last_login)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button 
+                          className="text-primary-600 hover:text-primary-900"
+                          onClick={() => setSelectedUser(user)}
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <Link
+                          to={`/admin/users/edit/${user.id}`}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          <Edit2 size={18} />
+                        </Link>
+                        <button 
+                          className="text-red-600 hover:text-red-900"
+                          onClick={() => deleteUser(user.id)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <AlertCircle size={40} className="text-gray-400 mb-2" />
+                        <h3 className="text-lg font-medium text-gray-900">No users found</h3>
+                        <p className="text-gray-500">Try adjusting your search or filters</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
       
@@ -305,9 +357,10 @@ const UsersPage = () => {
                     
                     <div className="mb-6 flex items-center">
                       <img 
-                        src={selectedUser.avatar} 
+                        src={selectedUser.avatar || "https://via.placeholder.com/100"} 
                         alt={selectedUser.name} 
                         className="w-16 h-16 rounded-full object-cover mr-4"
+                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
                       />
                       <div>
                         <h4 className="text-xl font-semibold">{selectedUser.name}</h4>
@@ -346,7 +399,7 @@ const UsersPage = () => {
                       <div className="bg-gray-50 p-3 rounded-lg">
                         <span className="text-sm text-gray-500 block">Last Login</span>
                         <div className="font-medium">
-                          {selectedUser.lastLogin}
+                          {formatDate(selectedUser.last_login)}
                         </div>
                       </div>
                     </div>
@@ -388,16 +441,24 @@ const UsersPage = () => {
                 </div>
               </div>
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
+                <Link
+                  to={`/admin/users/edit/${selectedUser.id}`}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Edit User
+                </Link>
+                <button 
+                  onClick={() => toggleUserStatus(selectedUser.id, selectedUser.status)}
+                  className={`mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 ${
+                    selectedUser.status === 'Active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                  } text-base font-medium text-white focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm`}
+                >
+                  {selectedUser.status === 'Active' ? 'Deactivate User' : 'Activate User'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedUser(null)}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setSelectedUser(null)}
                 >
                   Close
                 </button>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { packages } from '../data/packages';
 import { 
   ArrowLeft, 
   Clock, 
@@ -10,27 +9,120 @@ import {
   XCircle, 
   Calendar,
   Users,
-  Bed
+  Bed,
+  Loader
 } from 'lucide-react';
+import { supabase, TourPackage, Itinerary } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const PackageDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const [pkg, setPkg] = useState(packages.find(p => p.id === Number(id)));
+  const [pkg, setPkg] = useState<TourPackage | null>(null);
+  const [itinerary, setItinerary] = useState<Itinerary[]>([]);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     window.scrollTo(0, 0);
-    
-    // Find the package based on the id
-    const currentPackage = packages.find(p => p.id === Number(id));
-    setPkg(currentPackage);
-    
-    if (currentPackage) {
-      document.title = `${currentPackage.title} | JKLG Travel Agency`;
-    } else {
-      document.title = 'Package Not Found | JKLG Travel Agency';
-    }
+    fetchPackage();
   }, [id]);
   
+  const fetchPackage = async () => {
+    try {
+      setLoading(true);
+      if (!id) return;
+      
+      // Fetch the package
+      const { data: packageData, error: packageError } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (packageError) throw packageError;
+      
+      if (packageData) {
+        setPkg(packageData);
+        document.title = `${packageData.title} | JKLG Travel Agency`;
+        
+        // Fetch the itinerary for this package
+        const { data: itineraryData, error: itineraryError } = await supabase
+          .from('itineraries')
+          .select('*')
+          .eq('package_id', id)
+          .order('day', { ascending: true });
+        
+        if (itineraryError) throw itineraryError;
+        
+        if (itineraryData) {
+          setItinerary(itineraryData);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching package details:', error);
+      toast.error('Failed to load package details');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!pkg) return;
+    
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    const travel_date = formData.get('date') as string;
+    const message = formData.get('message') as string;
+    
+    if (!name || !email || !phone || !travel_date) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    
+    try {
+      const booking = {
+        name,
+        email,
+        phone,
+        package: pkg.title,
+        travel_date,
+        booking_date: new Date().toISOString().split('T')[0],
+        amount: pkg.price,
+        status: 'Pending',
+        message: message || '',
+        payment_status: 'Pending',
+        source: 'Website'
+      };
+      
+      const { error } = await supabase
+        .from('bookings')
+        .insert([booking]);
+      
+      if (error) throw error;
+      
+      toast.success('Your booking request has been submitted! We will contact you shortly.');
+      form.reset();
+    } catch (error) {
+      console.error('Error submitting booking:', error);
+      toast.error('Failed to submit booking. Please try again.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="text-center">
+          <Loader size={50} className="text-primary-600 animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-semibold">Loading package details...</h2>
+        </div>
+      </div>
+    );
+  }
+
   if (!pkg) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -128,9 +220,9 @@ const PackageDetailPage = () => {
             <div className="bg-white rounded-xl shadow-md p-8 mb-8">
               <h2 className="text-2xl font-bold mb-6">Tour Itinerary</h2>
               <div className="space-y-6">
-                {pkg.itinerary.map((day, index) => (
+                {itinerary.map((day, index) => (
                   <div 
-                    key={index}
+                    key={day.id}
                     className="relative pl-8 pb-6 border-l-2 border-primary-200 last:border-0 last:pb-0"
                   >
                     <div className="absolute left-0 top-0 transform -translate-x-1/2 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
@@ -183,13 +275,15 @@ const PackageDetailPage = () => {
             <div className="bg-white rounded-xl shadow-md p-6 sticky top-24">
               <h2 className="text-xl font-bold mb-6 text-center">Book This Tour</h2>
               
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={handleBooking}>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                   <input 
                     type="text" 
-                    id="name" 
+                    id="name"
+                    name="name"
                     placeholder="Your full name"
+                    required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
@@ -199,7 +293,9 @@ const PackageDetailPage = () => {
                   <input 
                     type="email" 
                     id="email" 
+                    name="email"
                     placeholder="Your email address"
+                    required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
@@ -209,7 +305,9 @@ const PackageDetailPage = () => {
                   <input 
                     type="tel" 
                     id="phone" 
+                    name="phone"
                     placeholder="Your phone number"
+                    required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
@@ -221,6 +319,8 @@ const PackageDetailPage = () => {
                     <input 
                       type="date" 
                       id="date"
+                      name="date"
+                      required
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -232,6 +332,7 @@ const PackageDetailPage = () => {
                     <Users size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <select 
                       id="travelers"
+                      name="travelers"
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                     >
                       <option value="1">1 Person</option>
@@ -248,6 +349,7 @@ const PackageDetailPage = () => {
                   <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
                   <textarea 
                     id="message" 
+                    name="message"
                     placeholder="Any special requests or questions?"
                     rows={4}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"

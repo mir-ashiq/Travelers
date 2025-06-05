@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Upload } from 'lucide-react';
+import { Save, ArrowLeft, Upload, Loader } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const NewUserPage = () => {
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ const NewUserPage = () => {
     avatar: '',
     status: 'Active'
   });
+  const [loading, setLoading] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -23,18 +26,78 @@ const NewUserPage = () => {
     });
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match");
-      return;
+  const validateForm = () => {
+    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
+      toast.error('Please fill all required fields');
+      return false;
     }
     
-    // In a real app, this would save to the backend
-    alert('User created successfully!');
-    navigate('/admin/users');
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords don't match");
+      return false;
+    }
+    
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return false;
+    }
+    
+    return true;
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    try {
+      setLoading(true);
+      
+      // In a real app, you would use Supabase Auth to create a user
+      // Here we're just saving to the admin_users table directly
+      
+      // Check if email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('email', formData.email)
+        .maybeSingle();
+      
+      if (checkError) throw checkError;
+      
+      if (existingUser) {
+        toast.error('A user with this email already exists');
+        setLoading(false);
+        return;
+      }
+      
+      // Insert new user
+      const { data, error } = await supabase
+        .from('admin_users')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            role: formData.role,
+            avatar: formData.avatar || null,
+            status: formData.status
+            // In a real app, you would hash the password before storing it
+            // And we're not storing passwords in this table - we'd use Supabase Auth
+          }
+        ])
+        .select();
+      
+      if (error) throw error;
+      
+      toast.success('User created successfully!');
+      navigate('/admin/users');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error('Failed to create user');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,10 +117,20 @@ const NewUserPage = () => {
           </button>
           <button 
             onClick={handleSubmit}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
+            disabled={loading}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save size={18} className="mr-2" />
-            Create User
+            {loading ? (
+              <>
+                <Loader size={18} className="animate-spin mr-2" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Save size={18} className="mr-2" />
+                Create User
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -73,6 +146,10 @@ const NewUserPage = () => {
                       src={formData.avatar} 
                       alt="Avatar preview" 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://via.placeholder.com/100";
+                        setFormData({...formData, avatar: ""});
+                      }}
                     />
                   ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
@@ -187,6 +264,7 @@ const NewUserPage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Enter password"
                 required
+                minLength={6}
               />
             </div>
             
@@ -252,9 +330,10 @@ const NewUserPage = () => {
             </button>
             <button 
               type="submit"
-              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg"
+              disabled={loading}
+              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create User
+              {loading ? 'Creating...' : 'Create User'}
             </button>
           </div>
         </form>

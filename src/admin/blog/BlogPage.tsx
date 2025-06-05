@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Edit2, 
@@ -12,85 +12,54 @@ import {
   Tag, 
   AlertCircle,
   X,
-  ChevronDown
+  ChevronDown,
+  Loader
 } from 'lucide-react';
-
-// Mock blog post data
-const mockPosts = [
-  {
-    id: 1,
-    title: 'Top 10 Must-Visit Places in Kashmir Valley',
-    excerpt: 'Discover the breathtaking beauty of Kashmir with our guide to the top 10 destinations that should be on every traveler\'s bucket list.',
-    featuredImage: 'https://images.pexels.com/photos/11038549/pexels-photo-11038549.jpeg?auto=compress&cs=tinysrgb&w=300',
-    author: 'Priya Kaul',
-    date: '2025-05-15',
-    category: 'Destinations',
-    tags: ['Kashmir', 'Travel Guide', 'Sightseeing'],
-    status: 'Published',
-    views: 2456
-  },
-  {
-    id: 2,
-    title: 'A Beginner\'s Guide to Trekking in Ladakh',
-    excerpt: 'Planning your first trek to Ladakh? Here\'s everything you need to know about preparation, altitude sickness, best routes, and more.',
-    featuredImage: 'https://images.pexels.com/photos/15769417/pexels-photo-15769417/free-photo-of-mountains-in-leh-ladakh-india.jpeg?auto=compress&cs=tinysrgb&w=300',
-    author: 'Raj Gupta',
-    date: '2025-05-08',
-    category: 'Adventure',
-    tags: ['Ladakh', 'Trekking', 'Adventure Sports'],
-    status: 'Published',
-    views: 1832
-  },
-  {
-    id: 3,
-    title: 'Cultural Heritage of Jammu: Beyond the Temples',
-    excerpt: 'Explore the rich cultural heritage of Jammu region, from ancient forts to traditional crafts and cuisine.',
-    featuredImage: 'https://images.pexels.com/photos/8250698/pexels-photo-8250698.jpeg?auto=compress&cs=tinysrgb&w=300',
-    author: 'Aarav Sharma',
-    date: '2025-04-27',
-    category: 'Culture',
-    tags: ['Jammu', 'Cultural Heritage', 'History'],
-    status: 'Published',
-    views: 1245
-  },
-  {
-    id: 4,
-    title: 'The Hidden Gem of Kashmir: Exploring Gurez Valley',
-    excerpt: 'Journey with us as we take you through the untouched beauty of Gurez Valley, one of Kashmir\'s best-kept secrets.',
-    featuredImage: 'https://images.pexels.com/photos/4254547/pexels-photo-4254547.jpeg?auto=compress&cs=tinysrgb&w=300',
-    author: 'Zara Khan',
-    date: '2025-04-20',
-    category: 'Off the Beaten Path',
-    tags: ['Gurez', 'Hidden Gems', 'Kashmir'],
-    status: 'Published',
-    views: 983
-  },
-  {
-    id: 5,
-    title: 'Sustainable Tourism in Kashmir: How to Travel Responsibly',
-    excerpt: 'Learn how to minimize your environmental impact while traveling in Kashmir and contribute positively to local communities.',
-    featuredImage: 'https://images.pexels.com/photos/7680353/pexels-photo-7680353.jpeg?auto=compress&cs=tinysrgb&w=300',
-    author: 'Priya Kaul',
-    date: '2025-05-30',
-    category: 'Sustainable Travel',
-    tags: ['Eco-friendly', 'Sustainable Tourism', 'Responsible Travel'],
-    status: 'Draft',
-    views: 0
-  }
-];
+import { supabase, BlogPost } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
+import dayjs from 'dayjs';
 
 const BlogPage = () => {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [filteredPosts, setFilteredPosts] = useState(mockPosts);
+  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch blog posts from the database
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .order('id', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setPosts(data);
+        setFilteredPosts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+      toast.error('Failed to load blog posts');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Extract unique categories
-  const categories = [...new Set(mockPosts.map(post => post.category))];
+  const categories = [...new Set(posts.map(post => post.category))];
 
   // Apply filters
-  React.useEffect(() => {
-    let results = [...mockPosts];
+  useEffect(() => {
+    let results = [...posts];
     
     if (searchTerm) {
       results = results.filter(post => 
@@ -110,7 +79,7 @@ const BlogPage = () => {
     }
     
     setFilteredPosts(results);
-  }, [searchTerm, categoryFilter, statusFilter]);
+  }, [searchTerm, categoryFilter, statusFilter, posts]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -121,8 +90,53 @@ const BlogPage = () => {
 
   // Format date
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return dayjs(dateString).format('MMMM D, YYYY');
+  };
+
+  // Delete blog post
+  const deletePost = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this blog post?')) {
+      try {
+        const { error } = await supabase
+          .from('blog_posts')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        setPosts(posts.filter(post => post.id !== id));
+        toast.success('Blog post deleted successfully');
+      } catch (error) {
+        console.error('Error deleting blog post:', error);
+        toast.error('Failed to delete blog post');
+      }
+    }
+  };
+
+  // Toggle post status
+  const togglePostStatus = async (id: number, currentStatus: 'Published' | 'Draft') => {
+    try {
+      const newStatus = currentStatus === 'Published' ? 'Draft' : 'Published';
+      
+      const { error } = await supabase
+        .from('blog_posts')
+        .update({ status: newStatus })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setPosts(posts.map(post => {
+        if (post.id === id) {
+          return {...post, status: newStatus};
+        }
+        return post;
+      }));
+      
+      toast.success(`Post ${newStatus === 'Published' ? 'published' : 'unpublished'} successfully`);
+    } catch (error) {
+      console.error('Error updating blog post status:', error);
+      toast.error('Failed to update post status');
+    }
   };
 
   return (
@@ -200,7 +214,12 @@ const BlogPage = () => {
       
       {/* Blog Posts List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {filteredPosts.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader size={40} className="animate-spin text-primary-600 mr-3" />
+            <span className="text-lg">Loading blog posts...</span>
+          </div>
+        ) : filteredPosts.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -234,9 +253,10 @@ const BlogPage = () => {
                     <td className="px-4 py-4">
                       <div className="flex items-center">
                         <img 
-                          src={post.featuredImage} 
+                          src={post.featured_image} 
                           alt={post.title} 
                           className="w-12 h-12 rounded object-cover mr-3"
+                          onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/48")}
                         />
                         <div>
                           <div className="font-medium text-gray-900">{post.title}</div>
@@ -262,11 +282,14 @@ const BlogPage = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        post.status === 'Published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <button
+                        onClick={() => togglePostStatus(post.id, post.status as 'Published' | 'Draft')}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          post.status === 'Published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
                         {post.status}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center">
@@ -275,13 +298,22 @@ const BlogPage = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button className="text-primary-600 hover:text-primary-900">
+                      <Link 
+                        to={`/admin/blog/preview/${post.id}`}
+                        className="text-primary-600 hover:text-primary-900"
+                      >
                         <Eye size={18} />
-                      </button>
-                      <button className="text-indigo-600 hover:text-indigo-900">
+                      </Link>
+                      <Link 
+                        to={`/admin/blog/edit/${post.id}`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
                         <Edit2 size={18} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
+                      </Link>
+                      <button 
+                        className="text-red-600 hover:text-red-900"
+                        onClick={() => deletePost(post.id)}
+                      >
                         <Trash2 size={18} />
                       </button>
                     </td>
@@ -299,49 +331,53 @@ const BlogPage = () => {
         )}
         
         {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Previous
-            </button>
-            <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Next
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredPosts.length}</span> of{' '}
-                <span className="font-medium">{filteredPosts.length}</span> results
-              </p>
+        {!loading && filteredPosts.length > 0 && (
+          <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" disabled>
+                Previous
+              </button>
+              <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" disabled>
+                Next
+              </button>
             </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Previous</span>
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <button
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  1
-                </button>
-                <button
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Next</span>
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </nav>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredPosts.length}</span> of{' '}
+                  <span className="font-medium">{filteredPosts.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    disabled
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  <button
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    1
+                  </button>
+                  <button
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    disabled
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Upload, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Save, Upload, ArrowLeft, Plus, Trash2, Loader } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const NewPackagePage = () => {
   const navigate = useNavigate();
@@ -12,11 +14,13 @@ const NewPackagePage = () => {
     image: '',
     destinations: [''],
     featured: false,
+    rating: 0,
     accommodations: '',
     included: [''],
     excluded: [''],
     itinerary: [{ day: 1, title: '', description: '' }]
   });
+  const [loading, setLoading] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -146,11 +150,93 @@ const NewPackagePage = () => {
     });
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    if (!formData.title || !formData.description || !formData.price || !formData.duration || !formData.image || !formData.accommodations) {
+      toast.error('Please fill all required fields');
+      return false;
+    }
+    
+    if (formData.destinations.some(dest => !dest.trim())) {
+      toast.error('Please fill all destination fields or remove empty ones');
+      return false;
+    }
+    
+    if (formData.included.some(item => !item.trim())) {
+      toast.error('Please fill all included items or remove empty ones');
+      return false;
+    }
+    
+    if (formData.excluded.some(item => !item.trim())) {
+      toast.error('Please fill all excluded items or remove empty ones');
+      return false;
+    }
+    
+    if (formData.itinerary.some(day => !day.title || !day.description)) {
+      toast.error('Please complete all itinerary days');
+      return false;
+    }
+    
+    return true;
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would save to the backend
-    alert('Package created successfully!');
-    navigate('/admin/packages');
+    
+    if (!validateForm()) return;
+    
+    try {
+      setLoading(true);
+      
+      // Insert package
+      const { data: packageData, error: packageError } = await supabase
+        .from('packages')
+        .insert([
+          {
+            title: formData.title,
+            description: formData.description,
+            price: parseInt(formData.price),
+            duration: parseInt(formData.duration),
+            image: formData.image,
+            destinations: formData.destinations.filter(d => d.trim()),
+            featured: formData.featured,
+            rating: formData.rating || 0,
+            accommodations: formData.accommodations,
+            included: formData.included.filter(i => i.trim()),
+            excluded: formData.excluded.filter(e => e.trim())
+          }
+        ])
+        .select();
+      
+      if (packageError) throw packageError;
+      
+      if (packageData && packageData.length > 0) {
+        // Insert itinerary
+        const itineraryData = formData.itinerary.map(day => ({
+          package_id: packageData[0].id,
+          day: day.day,
+          title: day.title,
+          description: day.description
+        }));
+        
+        const { error: itineraryError } = await supabase
+          .from('itineraries')
+          .insert(itineraryData);
+        
+        if (itineraryError) {
+          console.error('Error creating itinerary:', itineraryError);
+          toast.error('Package created but there was an error with the itinerary');
+        } else {
+          toast.success('Package created successfully!');
+        }
+        
+        navigate('/admin/packages');
+      }
+    } catch (error) {
+      console.error('Error creating package:', error);
+      toast.error('Failed to create package');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -170,10 +256,20 @@ const NewPackagePage = () => {
           </button>
           <button 
             onClick={handleSubmit}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
+            disabled={loading}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save size={18} className="mr-2" />
-            Save Package
+            {loading ? (
+              <>
+                <Loader size={18} className="animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={18} className="mr-2" />
+                Save Package
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -284,6 +380,7 @@ const NewPackagePage = () => {
                   src={formData.image} 
                   alt="Package preview"
                   className="w-full h-40 object-cover"
+                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
                 />
               </div>
             </div>
@@ -501,9 +598,10 @@ const NewPackagePage = () => {
         <button 
           type="button"
           onClick={handleSubmit}
-          className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg"
+          disabled={loading}
+          className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Create Package
+          {loading ? 'Creating...' : 'Create Package'}
         </button>
       </div>
     </div>

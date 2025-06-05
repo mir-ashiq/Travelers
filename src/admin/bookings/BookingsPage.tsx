@@ -24,138 +24,63 @@ import {
   TrendingUp,
   Globe,
   X,
-  UserCheck
+  UserCheck,
+  Loader
 } from 'lucide-react';
-
-// Mock booking data
-const mockBookings = [
-  {
-    id: 1,
-    name: 'Rahul Sharma',
-    email: 'rahul.s@example.com',
-    phone: '+91 9876543210',
-    package: 'Kashmir Bliss: 6 Days Tour',
-    travelDate: '2025-06-10',
-    bookingDate: '2025-05-01',
-    amount: 24999,
-    status: 'Pending',
-    message: 'Looking forward to this trip! We are a family of 4.',
-    paymentStatus: 'Paid',
-    source: 'Website',
-    assignedTo: 'Priya Kaul'
-  },
-  {
-    id: 2,
-    name: 'Priya Singh',
-    email: 'priya.s@example.com',
-    phone: '+91 9876543211',
-    package: 'Ladakh Adventure: 8 Days Tour',
-    travelDate: '2025-06-15',
-    bookingDate: '2025-05-03',
-    amount: 34999,
-    status: 'Confirmed',
-    message: 'Please arrange for vegetarian meals. Excited for the trip!',
-    paymentStatus: 'Paid',
-    source: 'Mobile App',
-    assignedTo: 'Raj Gupta'
-  },
-  {
-    id: 3,
-    name: 'Ajay Patel',
-    email: 'ajay.p@example.com',
-    phone: '+91 9876543212',
-    package: 'Gurez Valley Explorer: 5 Days Tour',
-    travelDate: '2025-06-12',
-    bookingDate: '2025-05-02',
-    amount: 22999,
-    status: 'Pending',
-    message: 'I have some questions about the accommodation. Please call me.',
-    paymentStatus: 'Pending',
-    source: 'Phone Inquiry',
-    assignedTo: 'Unassigned'
-  },
-  {
-    id: 4,
-    name: 'Sarah Wilson',
-    email: 'sarah.w@example.com',
-    phone: '+44 7911123456',
-    package: 'Jammu Heritage Tour: 4 Days',
-    travelDate: '2025-06-18',
-    bookingDate: '2025-04-30',
-    amount: 18999,
-    status: 'Confirmed',
-    message: 'This is our first trip to India. Looking forward to it!',
-    paymentStatus: 'Paid',
-    source: 'Partner Agency',
-    assignedTo: 'Aarav Sharma'
-  },
-  {
-    id: 5,
-    name: 'Vikram Mehta',
-    email: 'vikram.m@example.com',
-    phone: '+91 9876543213',
-    package: 'Kashmir Bliss: 6 Days Tour',
-    travelDate: '2025-07-05',
-    bookingDate: '2025-05-10',
-    amount: 24999,
-    status: 'Cancelled',
-    message: 'Had to cancel due to a family emergency.',
-    paymentStatus: 'Refunded',
-    source: 'Website',
-    assignedTo: 'Zara Khan'
-  },
-  {
-    id: 6,
-    name: 'Neha Gupta',
-    email: 'neha.g@example.com',
-    phone: '+91 9876543214',
-    package: 'Ladakh Adventure: 8 Days Tour',
-    travelDate: '2025-07-20',
-    bookingDate: '2025-05-15',
-    amount: 34999,
-    status: 'Confirmed',
-    message: 'Please include a birthday surprise for my husband on July 22nd.',
-    paymentStatus: 'Paid',
-    source: 'Website',
-    assignedTo: 'Priya Kaul'
-  },
-  {
-    id: 7,
-    name: 'James Thompson',
-    email: 'james.t@example.com',
-    phone: '+1 2025550182',
-    package: 'Gurez Valley Explorer: 5 Days Tour',
-    travelDate: '2025-08-10',
-    bookingDate: '2025-05-20',
-    amount: 22999,
-    status: 'Pending',
-    message: 'Will there be English speaking guides available?',
-    paymentStatus: 'Pending',
-    source: 'Partner Agency',
-    assignedTo: 'Raj Gupta'
-  }
-];
+import { supabase, Booking } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
+import dayjs from 'dayjs';
 
 const BookingsPage = () => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateRange, setDateRange] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('');
-  const [filteredBookings, setFilteredBookings] = useState(mockBookings);
-  const [selectedBooking, setSelectedBooking] = useState<typeof mockBookings[0] | null>(null);
+  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedBookings, setSelectedBookings] = useState<number[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'ascending' | 'descending'} | null>(null);
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch bookings from the database
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('id', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setBookings(data);
+        setFilteredBookings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast.error('Failed to load bookings');
+    } finally {
+      setTimeout(() => {
+        setLoading(false);
+      }, 500); // Simulate loading delay
+    }
+  };
 
   // Apply filters
   useEffect(() => {
     setLoading(true);
-    let results = [...mockBookings];
+    let results = [...bookings];
     
     // Filter by search term
     if (searchTerm) {
@@ -176,19 +101,19 @@ const BookingsPage = () => {
     if (dateRange) {
       const today = new Date();
       if (dateRange === 'upcoming') {
-        results = results.filter(booking => new Date(booking.travelDate) > today);
+        results = results.filter(booking => new Date(booking.travel_date) > today);
       } else if (dateRange === 'past') {
-        results = results.filter(booking => new Date(booking.travelDate) < today);
+        results = results.filter(booking => new Date(booking.travel_date) < today);
       } else if (dateRange === 'recent') {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        results = results.filter(booking => new Date(booking.bookingDate) > sevenDaysAgo);
+        results = results.filter(booking => new Date(booking.booking_date) > sevenDaysAgo);
       }
     }
     
     // Filter by payment status
     if (paymentFilter) {
-      results = results.filter(booking => booking.paymentStatus === paymentFilter);
+      results = results.filter(booking => booking.payment_status === paymentFilter);
     }
     
     // Filter by source
@@ -198,7 +123,11 @@ const BookingsPage = () => {
     
     // Filter by assignee
     if (assigneeFilter) {
-      results = results.filter(booking => booking.assignedTo === assigneeFilter);
+      if (assigneeFilter === 'unassigned') {
+        results = results.filter(booking => !booking.assigned_to || booking.assigned_to === 'Unassigned');
+      } else {
+        results = results.filter(booking => booking.assigned_to === assigneeFilter);
+      }
     }
     
     // Apply sorting
@@ -223,7 +152,7 @@ const BookingsPage = () => {
       setSelectedBookings([]);
       setIsSelectAll(false);
     }, 500);
-  }, [searchTerm, statusFilter, dateRange, paymentFilter, sourceFilter, assigneeFilter, sortConfig]);
+  }, [searchTerm, statusFilter, dateRange, paymentFilter, sourceFilter, assigneeFilter, sortConfig, bookings]);
 
   // Handle select all
   useEffect(() => {
@@ -246,7 +175,7 @@ const BookingsPage = () => {
   };
 
   // View booking details
-  const viewBookingDetails = (booking: typeof mockBookings[0]) => {
+  const viewBookingDetails = (booking: Booking) => {
     setSelectedBooking(booking);
   };
 
@@ -256,36 +185,63 @@ const BookingsPage = () => {
   };
 
   // Update booking status
-  const updateStatus = (id: number, status: string) => {
-    // This would be an API call in a real application
-    setFilteredBookings(prevBookings => 
-      prevBookings.map(booking => 
-        booking.id === id ? {...booking, status} : booking
-      )
-    );
-    
-    // If the booking is currently selected, update its status in the modal
-    if (selectedBooking && selectedBooking.id === id) {
-      setSelectedBooking({...selectedBooking, status});
+  const updateStatus = async (id: number, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          booking.id === id ? {...booking, status} : booking
+        )
+      );
+      
+      // If the booking is currently selected, update its status in the modal
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking({...selectedBooking, status} as Booking);
+      }
+      
+      toast.success(`Booking status updated to ${status}`);
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      toast.error('Failed to update booking status');
     }
   };
   
   // Bulk update status
-  const bulkUpdateStatus = (status: string) => {
-    // This would be an API call in a real application
-    setFilteredBookings(prevBookings => 
-      prevBookings.map(booking => 
-        selectedBookings.includes(booking.id) ? {...booking, status} : booking
-      )
-    );
+  const bulkUpdateStatus = async (status: string) => {
+    if (!selectedBookings.length) return;
     
-    // Reset selection after bulk action
-    setSelectedBookings([]);
-    setIsSelectAll(false);
-    setBulkActionOpen(false);
-    
-    // Show success message or notification
-    alert(`${selectedBookings.length} bookings updated to ${status}`);
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status })
+        .in('id', selectedBookings);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          selectedBookings.includes(booking.id) ? {...booking, status} : booking
+        )
+      );
+      
+      // Reset selection after bulk action
+      setSelectedBookings([]);
+      setIsSelectAll(false);
+      setBulkActionOpen(false);
+      
+      toast.success(`${selectedBookings.length} bookings updated to ${status}`);
+    } catch (error) {
+      console.error('Error bulk updating bookings:', error);
+      toast.error('Failed to update bookings');
+    }
   };
 
   // Handle single booking selection
@@ -351,6 +307,55 @@ const BookingsPage = () => {
     }
   };
   
+  // Get unique sources for filter
+  const sources = [...new Set(bookings.map(b => b.source))];
+  
+  // Get unique assignees for filter
+  const assignees = [...new Set(bookings.filter(b => b.assigned_to).map(b => b.assigned_to as string))];
+
+  // Function to refresh data
+  const refreshData = () => {
+    fetchBookings();
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return dayjs(dateString).format('YYYY-MM-DD');
+  };
+
+  // Assign booking
+  const assignBooking = async (id: number, assignee: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ assigned_to: assignee })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setBookings(bookings.map(booking => {
+        if (booking.id === id) {
+          return {...booking, assigned_to: assignee};
+        }
+        return booking;
+      }));
+      
+      // Update selected booking if it's the one being modified
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking({
+          ...selectedBooking,
+          assigned_to: assignee
+        });
+      }
+      
+      toast.success(`Booking assigned to ${assignee}`);
+    } catch (error) {
+      console.error('Error assigning booking:', error);
+      toast.error('Failed to assign booking');
+    }
+  };
+
   // Calculate statistics
   const stats = {
     total: filteredBookings.length,
@@ -360,21 +365,6 @@ const BookingsPage = () => {
     revenue: filteredBookings
       .filter(b => b.status !== 'Cancelled')
       .reduce((sum, b) => sum + b.amount, 0)
-  };
-  
-  // Get unique sources for filter
-  const sources = [...new Set(mockBookings.map(b => b.source))];
-  
-  // Get unique assignees for filter
-  const assignees = [...new Set(mockBookings.map(b => b.assignedTo))];
-
-  // Function to refresh data
-  const refreshData = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setFilteredBookings([...mockBookings]);
-      setLoading(false);
-    }, 800);
   };
 
   return (
@@ -576,6 +566,7 @@ const BookingsPage = () => {
                   className="appearance-none bg-white w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">All Assignees</option>
+                  <option value="unassigned">Unassigned</option>
                   {assignees.map(assignee => (
                     <option key={assignee} value={assignee}>{assignee}</option>
                   ))}
@@ -600,7 +591,7 @@ const BookingsPage = () => {
           )}
           
           <div className="text-sm text-gray-500">
-            {loading ? 'Loading...' : `Showing ${filteredBookings.length} of ${mockBookings.length} bookings`}
+            {loading ? 'Loading...' : `Showing ${filteredBookings.length} of ${bookings.length} bookings`}
           </div>
         </div>
       </div>
@@ -702,9 +693,9 @@ const BookingsPage = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
                       className="flex items-center focus:outline-none"
-                      onClick={() => requestSort('travelDate')}
+                      onClick={() => requestSort('travel_date')}
                     >
-                      Travel Date {renderSortIndicator('travelDate')}
+                      Travel Date {renderSortIndicator('travel_date')}
                     </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -718,9 +709,9 @@ const BookingsPage = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
                       className="flex items-center focus:outline-none"
-                      onClick={() => requestSort('paymentStatus')}
+                      onClick={() => requestSort('payment_status')}
                     >
-                      Payment {renderSortIndicator('paymentStatus')}
+                      Payment {renderSortIndicator('payment_status')}
                     </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -762,18 +753,18 @@ const BookingsPage = () => {
                       <div className="text-sm font-medium text-gray-900 max-w-xs truncate">{booking.package}</div>
                       <div className="text-xs text-gray-500 flex items-center">
                         <Calendar size={12} className="mr-1" />
-                        Booked on: {new Date(booking.bookingDate).toLocaleDateString()}
+                        Booked on: {formatDate(booking.booking_date)}
                       </div>
                       <div className="text-xs text-gray-500 flex items-center">
                         <Users size={12} className="mr-1" />
-                        Assigned: {booking.assignedTo}
+                        Assigned: {booking.assigned_to || 'Unassigned'}
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Calendar size={14} className="text-gray-500 mr-1" />
                         <span className="text-sm text-gray-900">
-                          {new Date(booking.travelDate).toLocaleDateString()}
+                          {formatDate(booking.travel_date)}
                         </span>
                       </div>
                     </td>
@@ -783,8 +774,8 @@ const BookingsPage = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(booking.paymentStatus)}`}>
-                        {booking.paymentStatus}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(booking.payment_status)}`}>
+                        {booking.payment_status}
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
@@ -852,10 +843,10 @@ const BookingsPage = () => {
         {/* Pagination */}
         <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
           <div className="flex-1 flex justify-between sm:hidden">
-            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" disabled>
               Previous
             </button>
-            <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" disabled>
               Next
             </button>
           </div>
@@ -870,6 +861,7 @@ const BookingsPage = () => {
               <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                 <button
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  disabled
                 >
                   <span className="sr-only">Previous</span>
                   <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -883,6 +875,7 @@ const BookingsPage = () => {
                 </button>
                 <button
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  disabled
                 >
                   <span className="sr-only">Next</span>
                   <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -935,8 +928,8 @@ const BookingsPage = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-500">Payment Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(selectedBooking.paymentStatus)}`}>
-                          {selectedBooking.paymentStatus}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(selectedBooking.payment_status)}`}>
+                          {selectedBooking.payment_status}
                         </span>
                       </div>
                     </div>
@@ -963,7 +956,7 @@ const BookingsPage = () => {
                           <p className="font-medium">{selectedBooking.package}</p>
                           <div className="flex items-center text-sm text-gray-600 mt-1">
                             <Calendar size={14} className="mr-1" />
-                            <span>Travel Date: {new Date(selectedBooking.travelDate).toLocaleDateString()}</span>
+                            <span>Travel Date: {formatDate(selectedBooking.travel_date)}</span>
                           </div>
                           <div className="text-sm text-gray-600 mt-1 font-medium">
                             Amount: ₹{selectedBooking.amount.toLocaleString('en-IN')}
@@ -989,11 +982,18 @@ const BookingsPage = () => {
                       <div className="bg-white p-4 border border-gray-200 rounded-lg flex items-center justify-between">
                         <div className="flex items-center">
                           <UserCheck size={16} className="text-gray-500 mr-2" />
-                          <span>Assigned to: <span className="font-medium">{selectedBooking.assignedTo}</span></span>
+                          <span>Assigned to: <span className="font-medium">{selectedBooking.assigned_to || 'Unassigned'}</span></span>
                         </div>
-                        <button className="text-primary-600 text-sm hover:underline">
-                          Reassign
-                        </button>
+                        <div className="relative">
+                          <button 
+                            onClick={() => {}}
+                            className="text-primary-600 text-sm hover:underline flex items-center"
+                          >
+                            Reassign
+                            <ChevronDown size={16} className="ml-1" />
+                          </button>
+                          {/* Dropdown menu would go here */}
+                        </div>
                       </div>
                     </div>
                     
@@ -1004,7 +1004,7 @@ const BookingsPage = () => {
                           <div className="absolute left-0 top-0 transform -translate-x-1/2 w-4 h-4 bg-blue-500 rounded-full"></div>
                           <div>
                             <p className="font-medium">Booking Created</p>
-                            <p className="text-sm text-gray-600">{new Date(selectedBooking.bookingDate).toLocaleString()}</p>
+                            <p className="text-sm text-gray-600">{formatDate(selectedBooking.booking_date)}</p>
                           </div>
                         </div>
                         
@@ -1013,7 +1013,7 @@ const BookingsPage = () => {
                             <div className="absolute left-0 top-0 transform -translate-x-1/2 w-4 h-4 bg-green-500 rounded-full"></div>
                             <div>
                               <p className="font-medium">Booking Confirmed</p>
-                              <p className="text-sm text-gray-600">{new Date(selectedBooking.bookingDate).toLocaleString()}</p>
+                              <p className="text-sm text-gray-600">{formatDate(selectedBooking.booking_date)}</p>
                             </div>
                           </div>
                         )}
@@ -1023,7 +1023,7 @@ const BookingsPage = () => {
                             <div className="absolute left-0 top-0 transform -translate-x-1/2 w-4 h-4 bg-red-500 rounded-full"></div>
                             <div>
                               <p className="font-medium">Booking Cancelled</p>
-                              <p className="text-sm text-gray-600">{new Date(selectedBooking.bookingDate).toLocaleString()}</p>
+                              <p className="text-sm text-gray-600">{formatDate(selectedBooking.booking_date)}</p>
                             </div>
                           </div>
                         )}

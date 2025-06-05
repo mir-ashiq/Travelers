@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, Upload, ArrowLeft } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const NewDestinationPage = () => {
   const navigate = useNavigate();
@@ -11,6 +13,7 @@ const NewDestinationPage = () => {
     image: '',
     featured: false
   });
+  const [loading, setLoading] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -28,11 +31,39 @@ const NewDestinationPage = () => {
     });
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would save to the backend
-    alert('Destination created successfully!');
-    navigate('/admin/destinations');
+    
+    if (!formData.name || !formData.description || !formData.image) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('destinations')
+        .insert([
+          {
+            name: formData.name,
+            region: formData.region,
+            description: formData.description,
+            image: formData.image,
+            featured: formData.featured
+          }
+        ])
+        .select();
+      
+      if (error) throw error;
+      
+      toast.success('Destination created successfully!');
+      navigate('/admin/destinations');
+    } catch (error) {
+      console.error('Error creating destination:', error);
+      toast.error('Failed to create destination');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,10 +83,23 @@ const NewDestinationPage = () => {
           </button>
           <button 
             onClick={handleSubmit}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
+            disabled={loading}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save size={18} className="mr-2" />
-            Save Destination
+            {loading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={18} className="mr-2" />
+                Save Destination
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -150,6 +194,7 @@ const NewDestinationPage = () => {
                   src={formData.image} 
                   alt="Destination preview"
                   className="w-full h-40 object-cover"
+                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
                 />
               </div>
             </div>
@@ -171,32 +216,21 @@ const NewDestinationPage = () => {
             </div>
           </div>
           
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-medium mb-2">SEO Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="metaTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                  Meta Title
-                </label>
-                <input
-                  type="text"
-                  id="metaTitle"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Meta title for SEO"
-                />
-              </div>
-              <div>
-                <label htmlFor="metaKeywords" className="block text-sm font-medium text-gray-700 mb-1">
-                  Meta Keywords
-                </label>
-                <input
-                  type="text"
-                  id="metaKeywords"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Comma-separated keywords"
-                />
-              </div>
-            </div>
+          <div className="flex justify-end space-x-2">
+            <button 
+              type="button"
+              onClick={() => navigate('/admin/destinations')}
+              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating...' : 'Create Destination'}
+            </button>
           </div>
         </form>
       </div>

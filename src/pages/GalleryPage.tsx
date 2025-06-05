@@ -1,17 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import { gallery } from '../data/gallery';
 import { motion } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader } from 'lucide-react';
+import { supabase, GalleryItem } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const GalleryPage = () => {
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredGallery, setFilteredGallery] = useState(gallery);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [filteredGallery, setFilteredGallery] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     document.title = 'Gallery | JKLG Travel Agency';
+    fetchGallery();
   }, []);
+
+  const fetchGallery = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('gallery')
+        .select('*')
+        .order('id', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setGallery(data);
+        setFilteredGallery(data);
+      }
+    } catch (error) {
+      console.error('Error fetching gallery:', error);
+      toast.error('Failed to load gallery');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (searchTerm) {
@@ -22,7 +48,7 @@ const GalleryPage = () => {
     } else {
       setFilteredGallery(gallery);
     }
-  }, [searchTerm]);
+  }, [searchTerm, gallery]);
 
   const openImage = (id: number) => {
     setSelectedImage(id);
@@ -99,7 +125,14 @@ const GalleryPage = () => {
       {/* Gallery Grid */}
       <div className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          {filteredGallery.length > 0 ? (
+          {loading ? (
+            // Loading skeleton
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <div key={index} className="bg-gray-200 rounded-lg h-64 animate-pulse"></div>
+              ))}
+            </div>
+          ) : filteredGallery.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filteredGallery.map((item, index) => (
                 <motion.div 
@@ -115,6 +148,7 @@ const GalleryPage = () => {
                     src={item.image} 
                     alt={item.title} 
                     className="w-full h-full object-cover"
+                    onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/600x400?text=Image+Not+Available")}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-end justify-start p-4">
                     <div>
@@ -153,6 +187,7 @@ const GalleryPage = () => {
                 src={filteredGallery.find(item => item.id === selectedImage)?.image} 
                 alt={filteredGallery.find(item => item.id === selectedImage)?.title} 
                 className="w-full h-auto max-h-[80vh] object-contain"
+                onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/1200x800?text=Image+Not+Available")}
               />
               <div className="mt-4 text-white text-center">
                 <h3 className="text-xl font-bold">{filteredGallery.find(item => item.id === selectedImage)?.title}</h3>

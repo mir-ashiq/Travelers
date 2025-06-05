@@ -1,21 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { packages } from '../data/packages';
-import { Clock, Calendar, Star, ArrowRight, Search, Filter, X } from 'lucide-react';
+import { Clock, Calendar, Star, ArrowRight, Search, Filter, X, Loader } from 'lucide-react';
+import { supabase, TourPackage } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const PackagesPage = () => {
-  const [filteredPackages, setFilteredPackages] = useState(packages);
+  const [packages, setPackages] = useState<TourPackage[]>([]);
+  const [filteredPackages, setFilteredPackages] = useState<TourPackage[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('');
   const [sortBy, setSortBy] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [regions, setRegions] = useState<string[]>([]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     document.title = 'Tour Packages | JKLG Travel Agency';
+    fetchPackages();
   }, []);
 
-  // Extract all unique regions from packages destinations
-  const regions = [...new Set(packages.flatMap(pkg => pkg.destinations))].sort();
+  const fetchPackages = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('packages')
+        .select('*')
+        .order('id', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setPackages(data);
+        setFilteredPackages(data);
+        
+        // Extract all unique regions from packages destinations
+        const allRegions = [...new Set(data.flatMap(pkg => pkg.destinations))].sort();
+        setRegions(allRegions);
+      }
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+      toast.error('Failed to load packages');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and sort packages
   useEffect(() => {
@@ -49,7 +77,7 @@ const PackagesPage = () => {
     }
     
     setFilteredPackages(result);
-  }, [searchTerm, selectedRegion, sortBy]);
+  }, [searchTerm, selectedRegion, sortBy, packages]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -138,7 +166,21 @@ const PackagesPage = () => {
       {/* Packages Grid */}
       <div className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          {filteredPackages.length > 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="bg-white rounded-xl overflow-hidden shadow-md animate-pulse">
+                  <div className="h-56 bg-gray-200"></div>
+                  <div className="p-5">
+                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredPackages.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredPackages.map(pkg => (
                 <div 
@@ -150,6 +192,7 @@ const PackagesPage = () => {
                       src={pkg.image} 
                       alt={pkg.title} 
                       className="w-full h-full object-cover"
+                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400x300?text=Image+Not+Available")}
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent h-24"></div>
                     <div className="absolute bottom-3 left-3 flex items-center">

@@ -1,19 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit2, Trash2, Eye, Plus, Search, Filter, X, Upload, AlertCircle } from 'lucide-react';
-import { gallery } from '../../data/gallery';
+import { Edit2, Trash2, Eye, Plus, Search, Filter, X, AlertCircle, Loader } from 'lucide-react';
+import { supabase, GalleryItem } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const GalleryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
-  const [filteredGallery, setFilteredGallery] = useState(gallery);
-  const [selectedImage, setSelectedImage] = useState<any>(null);
+  const [filteredGallery, setFilteredGallery] = useState<GalleryItem[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch gallery from the database
+  useEffect(() => {
+    fetchGallery();
+  }, []);
+
+  const fetchGallery = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('gallery')
+        .select('*')
+        .order('id', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setGallery(data);
+        setFilteredGallery(data);
+      }
+    } catch (error) {
+      console.error('Error fetching gallery:', error);
+      toast.error('Failed to load gallery');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Extract unique locations from gallery items
   const locations = [...new Set(gallery.map(item => item.location))];
 
   // Apply filters
-  React.useEffect(() => {
+  useEffect(() => {
     let results = [...gallery];
     
     if (searchTerm) {
@@ -28,12 +58,32 @@ const GalleryPage = () => {
     }
     
     setFilteredGallery(results);
-  }, [searchTerm, selectedLocation]);
+  }, [searchTerm, selectedLocation, gallery]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedLocation('');
+  };
+
+  // Delete gallery item
+  const deleteGalleryItem = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this image?')) {
+      try {
+        const { error } = await supabase
+          .from('gallery')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        setGallery(gallery.filter(item => item.id !== id));
+        toast.success('Image deleted successfully');
+      } catch (error) {
+        console.error('Error deleting image:', error);
+        toast.error('Failed to delete image');
+      }
+    }
   };
 
   return (
@@ -99,7 +149,12 @@ const GalleryPage = () => {
       
       {/* Gallery Grid */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        {filteredGallery.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader size={40} className="animate-spin text-primary-600 mr-3" />
+            <span className="text-lg">Loading gallery...</span>
+          </div>
+        ) : filteredGallery.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredGallery.map(item => (
               <div 
@@ -110,6 +165,7 @@ const GalleryPage = () => {
                   src={item.image} 
                   alt={item.title} 
                   className="w-full h-48 object-cover"
+                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/300x200")}
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-opacity duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <div className="flex space-x-2">
@@ -120,15 +176,17 @@ const GalleryPage = () => {
                     >
                       <Eye size={18} />
                     </button>
-                    <button 
+                    <Link
+                      to={`/admin/gallery/edit/${item.id}`}
                       className="p-2 bg-white rounded-full text-indigo-600 hover:text-indigo-800"
                       title="Edit"
                     >
                       <Edit2 size={18} />
-                    </button>
+                    </Link>
                     <button 
                       className="p-2 bg-white rounded-full text-red-600 hover:text-red-800"
                       title="Delete"
+                      onClick={() => deleteGalleryItem(item.id)}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -150,20 +208,22 @@ const GalleryPage = () => {
         )}
         
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-          <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredGallery.length}</span> of{' '}
-            <span className="font-medium">{gallery.length}</span> images
+        {!loading && filteredGallery.length > 0 && (
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+            <div className="text-sm text-gray-700">
+              Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredGallery.length}</span> of{' '}
+              <span className="font-medium">{gallery.length}</span> images
+            </div>
+            <div className="flex items-center space-x-2">
+              <button className="p-2 border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50" disabled>
+                Previous
+              </button>
+              <button className="p-2 border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50" disabled>
+                Next
+              </button>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button className="p-2 border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50" disabled>
-              Previous
-            </button>
-            <button className="p-2 border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50" disabled>
-              Next
-            </button>
-          </div>
-        </div>
+        )}
       </div>
       
       {/* Image Preview Modal */}
@@ -197,6 +257,7 @@ const GalleryPage = () => {
                         src={selectedImage.image}
                         alt={selectedImage.title}
                         className="w-full h-64 object-cover rounded-lg mb-4"
+                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -213,10 +274,16 @@ const GalleryPage = () => {
                 </div>
               </div>
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <Link
+                  to={`/admin/gallery/edit/${selectedImage.id}`}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Edit
+                </Link>
                 <button
                   type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => setSelectedImage(null)}
-                  className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Close
                 </button>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Upload, ArrowLeft } from 'lucide-react';
+import { Save, Upload, ArrowLeft, Loader } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const NewGalleryPage = () => {
   const navigate = useNavigate();
@@ -9,6 +11,7 @@ const NewGalleryPage = () => {
     location: '',
     image: ''
   });
+  const [loading, setLoading] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -18,11 +21,38 @@ const NewGalleryPage = () => {
     });
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would save to the backend
-    alert('Image added to gallery successfully!');
-    navigate('/admin/gallery');
+    
+    if (!formData.title || !formData.location || !formData.image) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('gallery')
+        .insert([
+          {
+            title: formData.title,
+            location: formData.location,
+            image: formData.image
+          }
+        ])
+        .select();
+      
+      if (error) throw error;
+      
+      toast.success('Image added to gallery successfully!');
+      navigate('/admin/gallery');
+    } catch (error) {
+      console.error('Error adding image to gallery:', error);
+      toast.error('Failed to add image');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,10 +72,20 @@ const NewGalleryPage = () => {
           </button>
           <button 
             onClick={handleSubmit}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
+            disabled={loading}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save size={18} className="mr-2" />
-            Save Image
+            {loading ? (
+              <>
+                <Loader size={18} className="animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={18} className="mr-2" />
+                Save Image
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -121,6 +161,7 @@ const NewGalleryPage = () => {
                   src={formData.image} 
                   alt="Gallery image preview"
                   className="w-full h-64 object-cover"
+                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
                 />
               </div>
             </div>
@@ -136,9 +177,10 @@ const NewGalleryPage = () => {
             </button>
             <button 
               type="submit"
-              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg"
+              disabled={loading}
+              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add to Gallery
+              {loading ? 'Adding...' : 'Add to Gallery'}
             </button>
           </div>
         </form>

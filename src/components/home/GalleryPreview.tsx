@@ -1,12 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { gallery } from '../../data/gallery';
+import { supabase, GalleryItem } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const GalleryPreview = () => {
-  // Get first 6 gallery items
-  const galleryItems = gallery.slice(0, 6);
+  const [loading, setLoading] = useState(true);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+
+  // Fetch gallery items from the database
+  useEffect(() => {
+    async function fetchGallery() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('gallery')
+          .select('*')
+          .limit(6);
+          
+        if (error) throw error;
+        
+        if (data) {
+          setGalleryItems(data);
+        }
+      } catch (error) {
+        console.error('Error fetching gallery:', error);
+        toast.error('Failed to load gallery');
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchGallery();
+  }, []);
 
   return (
     <section className="py-16 bg-gray-50">
@@ -21,28 +48,40 @@ const GalleryPreview = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {galleryItems.map((item, index) => (
-            <motion.div 
-              key={item.id} 
-              className="gallery-item relative rounded-lg overflow-hidden"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <img 
-                src={item.image} 
-                alt={item.title} 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <div className="text-center p-4">
-                  <h3 className="text-white text-lg font-semibold mb-1">{item.title}</h3>
-                  <p className="text-white text-sm opacity-90">{item.location}</p>
+          {loading ? (
+            // Loading skeleton
+            Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="bg-gray-200 rounded-lg h-64 animate-pulse"></div>
+            ))
+          ) : galleryItems.length > 0 ? (
+            galleryItems.map((item, index) => (
+              <motion.div 
+                key={item.id} 
+                className="gallery-item relative rounded-lg overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
+              >
+                <img 
+                  src={item.image} 
+                  alt={item.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/600x400?text=Image+Not+Available")}
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <div className="text-center p-4">
+                    <h3 className="text-white text-lg font-semibold mb-1">{item.title}</h3>
+                    <p className="text-white text-sm opacity-90">{item.location}</p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-12">
+              <p className="text-gray-600">No gallery items available at the moment.</p>
+            </div>
+          )}
         </div>
 
         <div className="text-center mt-12">

@@ -1,11 +1,71 @@
-import React, { useEffect } from 'react';
-import { MapPin, Phone, Mail, Clock, Send, MessageSquare } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { MapPin, Phone, Mail, Clock, Send, MessageSquare, Loader } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const ContactPage = () => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: ''
+  });
+
   useEffect(() => {
     window.scrollTo(0, 0);
     document.title = 'Contact Us | JKLG Travel Agency';
   }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      // Create a support ticket
+      const { error } = await supabase
+        .from('support_tickets')
+        .insert([{
+          subject: formData.subject,
+          customer: formData.name,
+          email: formData.email,
+          status: 'Open',
+          priority: 'Medium', // Default priority
+          category: 'Information', // Default category
+          assigned_to: null,
+          last_update: new Date().toISOString()
+        }])
+        .select();
+      
+      if (error) throw error;
+      
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        subject: '',
+        message: ''
+      });
+      
+      toast.success('Your message has been sent! We will get back to you soon.');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -98,14 +158,18 @@ const ContactPage = () => {
                 Have questions about our tour packages or need personalized recommendations? Fill out the form below and our team will get back to you within 24 hours.
               </p>
 
-              <form className="space-y-6">
+              <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                     <input 
                       type="text" 
                       id="name" 
+                      name="name"
                       placeholder="Your full name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -114,7 +178,11 @@ const ContactPage = () => {
                     <input 
                       type="email" 
                       id="email" 
+                      name="email"
                       placeholder="Your email address"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -126,7 +194,11 @@ const ContactPage = () => {
                     <input 
                       type="tel" 
                       id="phone" 
+                      name="phone"
                       placeholder="Your phone number"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -135,7 +207,11 @@ const ContactPage = () => {
                     <input 
                       type="text" 
                       id="subject" 
+                      name="subject"
                       placeholder="Subject of your message"
+                      value={formData.subject}
+                      onChange={handleChange}
+                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -145,8 +221,12 @@ const ContactPage = () => {
                   <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
                   <textarea 
                     id="message" 
+                    name="message"
                     placeholder="Your message"
                     rows={6}
+                    value={formData.message}
+                    onChange={handleChange}
+                    required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   ></textarea>
                 </div>
@@ -154,10 +234,20 @@ const ContactPage = () => {
                 <div>
                   <button
                     type="submit"
-                    className="inline-flex items-center bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-8 rounded-lg transition duration-300"
+                    disabled={loading}
+                    className="inline-flex items-center bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-8 rounded-lg transition duration-300 disabled:bg-primary-400 disabled:cursor-not-allowed"
                   >
-                    Send Message
-                    <Send size={20} className="ml-2" />
+                    {loading ? (
+                      <>
+                        <Loader size={20} className="animate-spin mr-2" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        Send Message
+                        <Send size={20} className="ml-2" />
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

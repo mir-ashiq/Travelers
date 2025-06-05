@@ -1,10 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import { Star, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { testimonials } from '../../data/testimonials';
+import { supabase, Testimonial } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const TestimonialSlider = () => {
+  const [loading, setLoading] = useState(true);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+
+  // Fetch published testimonials from the database
+  useEffect(() => {
+    async function fetchTestimonials() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('testimonials')
+          .select('*')
+          .eq('status', 'published')
+          .order('id', { ascending: false })
+          .limit(10);
+          
+        if (error) throw error;
+        
+        if (data) {
+          setTestimonials(data);
+        }
+      } catch (error) {
+        console.error('Error fetching testimonials:', error);
+        toast.error('Failed to load testimonials');
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchTestimonials();
+  }, []);
+
   const settings = {
     dots: true,
     infinite: true,
@@ -55,31 +87,55 @@ const TestimonialSlider = () => {
         </div>
 
         <div className="testimonial-slider">
-          <Slider {...settings}>
-            {testimonials.map((testimonial) => (
-              <div key={testimonial.id} className="px-3">
-                <div className="bg-white shadow-md rounded-xl p-6 h-full">
-                  <div className="flex mb-4">
-                    {renderStars(testimonial.rating)}
-                  </div>
-                  <p className="text-gray-600 mb-6 italic">
-                    "{testimonial.message}"
-                  </p>
+          {loading ? (
+            // Loading skeleton
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="bg-gray-100 rounded-xl p-6 h-56 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-2/3 mb-3"></div>
+                  <div className="h-20 bg-gray-200 rounded w-full mb-4"></div>
                   <div className="flex items-center">
-                    <img 
-                      src={testimonial.avatar} 
-                      alt={testimonial.name} 
-                      className="w-12 h-12 rounded-full object-cover mr-4"
-                    />
+                    <div className="rounded-full bg-gray-200 h-12 w-12 mr-3"></div>
                     <div>
-                      <h4 className="font-semibold">{testimonial.name}</h4>
-                      <p className="text-sm text-gray-500">{testimonial.location}</p>
+                      <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                      <div className="h-3 bg-gray-200 rounded w-16"></div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </Slider>
+              ))}
+            </div>
+          ) : testimonials.length > 0 ? (
+            <Slider {...settings}>
+              {testimonials.map((testimonial) => (
+                <div key={testimonial.id} className="px-3">
+                  <div className="bg-white shadow-md rounded-xl p-6 h-full">
+                    <div className="flex mb-4">
+                      {renderStars(testimonial.rating)}
+                    </div>
+                    <p className="text-gray-600 mb-6 italic">
+                      "{testimonial.message}"
+                    </p>
+                    <div className="flex items-center">
+                      <img 
+                        src={testimonial.avatar} 
+                        alt={testimonial.name} 
+                        className="w-12 h-12 rounded-full object-cover mr-4"
+                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                      />
+                      <div>
+                        <h4 className="font-semibold">{testimonial.name}</h4>
+                        <p className="text-sm text-gray-500">{testimonial.location}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </Slider>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-600">No testimonials available at the moment.</p>
+            </div>
+          )}
         </div>
 
         <div className="text-center mt-12">

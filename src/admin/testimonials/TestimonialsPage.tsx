@@ -1,43 +1,40 @@
-import React, { useState } from 'react';
-import { Eye, Check, X, Search, Star, MessageSquare, AlertCircle } from 'lucide-react';
-import { testimonials as initialTestimonials } from '../../data/testimonials';
+import React, { useState, useEffect } from 'react';
+import { Eye, Check, X, Search, Star, MessageSquare, AlertCircle, Loader } from 'lucide-react';
+import { supabase, Testimonial } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const TestimonialsPage = () => {
-  // Add a status field to each testimonial (published, pending, rejected)
-  const extendedTestimonials = initialTestimonials.map((t, index) => ({
-    ...t,
-    status: index < 4 ? 'published' : index < 6 ? 'pending' : 'rejected',
-    date: new Date(2025, 5 - index, 15 - index).toISOString().split('T')[0]
-  }));
-
-  // Add a few pending testimonials for the admin to review
-  const pendingTestimonials = [
-    {
-      id: initialTestimonials.length + 1,
-      name: 'Sanjay Mehta',
-      avatar: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=100',
-      location: 'Bengaluru, India',
-      rating: 5,
-      message: 'The Kashmir Bliss tour exceeded all expectations. The houseboat experience on Dal Lake was magical, and our guide was incredibly knowledgeable. Will definitely recommend to friends and family!',
-      status: 'pending',
-      date: '2025-05-02'
-    },
-    {
-      id: initialTestimonials.length + 2,
-      name: 'Emma Wilson',
-      avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=100',
-      location: 'Manchester, UK',
-      rating: 4,
-      message: 'Our Ladakh trip was incredible. The landscapes are out of this world. Only feedback would be that some accommodations could be improved, but overall an amazing adventure.',
-      status: 'pending',
-      date: '2025-05-03'
-    }
-  ];
-
-  const [testimonials, setTestimonials] = useState([...extendedTestimonials, ...pendingTestimonials]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedTestimonial, setSelectedTestimonial] = useState<any>(null);
+  const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch testimonials from the database
+  useEffect(() => {
+    fetchTestimonials();
+  }, []);
+
+  const fetchTestimonials = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('id', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setTestimonials(data);
+      }
+    } catch (error) {
+      console.error('Error fetching testimonials:', error);
+      toast.error('Failed to load testimonials');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Function to render stars based on rating
   const renderStars = (rating: number) => {
@@ -63,19 +60,33 @@ const TestimonialsPage = () => {
   });
 
   // Handle status change
-  const changeStatus = (id: number, status: string) => {
-    setTestimonials(testimonials.map(testimonial => 
-      testimonial.id === id ? {...testimonial, status} : testimonial
-    ));
-    
-    // Update status in modal if open
-    if (selectedTestimonial && selectedTestimonial.id === id) {
-      setSelectedTestimonial({...selectedTestimonial, status});
+  const changeStatus = async (id: number, status: 'published' | 'pending' | 'rejected') => {
+    try {
+      const { error } = await supabase
+        .from('testimonials')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setTestimonials(testimonials.map(testimonial => 
+        testimonial.id === id ? {...testimonial, status} : testimonial
+      ));
+      
+      // Update status in modal if open
+      if (selectedTestimonial && selectedTestimonial.id === id) {
+        setSelectedTestimonial({...selectedTestimonial, status});
+      }
+      
+      toast.success(`Testimonial status changed to ${status}`);
+    } catch (error) {
+      console.error('Error updating testimonial status:', error);
+      toast.error('Failed to update testimonial status');
     }
   };
 
   // View testimonial details
-  const viewTestimonial = (testimonial: any) => {
+  const viewTestimonial = (testimonial: Testimonial) => {
     setSelectedTestimonial(testimonial);
   };
 
@@ -102,6 +113,17 @@ const TestimonialsPage = () => {
             <option value="pending">Pending Review</option>
             <option value="rejected">Rejected</option>
           </select>
+          
+          <button
+            onClick={() => fetchTestimonials()}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
+          >
+            <svg className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Refresh
+          </button>
         </div>
       </div>
       
@@ -136,103 +158,115 @@ const TestimonialsPage = () => {
       )}
       
       {/* Testimonials Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTestimonials.map(testimonial => (
-          <div 
-            key={testimonial.id} 
-            className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center">
-                  <img 
-                    src={testimonial.avatar} 
-                    alt={testimonial.name} 
-                    className="w-12 h-12 rounded-full object-cover mr-4"
-                  />
-                  <div>
-                    <h3 className="font-semibold">{testimonial.name}</h3>
-                    <p className="text-sm text-gray-500">{testimonial.location}</p>
+      {loading ? (
+        <div className="flex items-center justify-center p-12 bg-white rounded-lg shadow-sm border border-gray-200">
+          <Loader size={40} className="animate-spin text-primary-600 mr-3" />
+          <span className="text-lg">Loading testimonials...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTestimonials.length > 0 ? (
+            filteredTestimonials.map(testimonial => (
+              <div 
+                key={testimonial.id} 
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center">
+                      <img 
+                        src={testimonial.avatar} 
+                        alt={testimonial.name} 
+                        className="w-12 h-12 rounded-full object-cover mr-4"
+                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                      />
+                      <div>
+                        <h3 className="font-semibold">{testimonial.name}</h3>
+                        <p className="text-sm text-gray-500">{testimonial.location}</p>
+                      </div>
+                    </div>
+                    <div className={`px-2 py-1 rounded text-xs font-medium ${
+                      testimonial.status === 'published' ? 'bg-green-100 text-green-800' : 
+                      testimonial.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}
+                    </div>
+                  </div>
+                  
+                  <div className="flex mb-3">
+                    {renderStars(testimonial.rating)}
+                    <span className="ml-2 text-sm text-gray-500">{testimonial.date}</span>
+                  </div>
+                  
+                  <div className="relative">
+                    <MessageSquare size={24} className="absolute left-0 top-0 text-gray-200" />
+                    <p className="pl-8 text-gray-600 line-clamp-3">
+                      "{testimonial.message}"
+                    </p>
+                  </div>
+                  
+                  <div className="mt-6 flex justify-between">
+                    <button 
+                      onClick={() => viewTestimonial(testimonial)}
+                      className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                    >
+                      View Details
+                    </button>
+                    
+                    <div className="flex space-x-2">
+                      {testimonial.status === 'pending' && (
+                        <>
+                          <button 
+                            onClick={() => changeStatus(testimonial.id, 'published')}
+                            className="text-green-600 hover:text-green-800"
+                            title="Approve"
+                          >
+                            <Check size={18} />
+                          </button>
+                          <button 
+                            onClick={() => changeStatus(testimonial.id, 'rejected')}
+                            className="text-red-600 hover:text-red-800"
+                            title="Reject"
+                          >
+                            <X size={18} />
+                          </button>
+                        </>
+                      )}
+                      
+                      {testimonial.status === 'published' && (
+                        <button 
+                          onClick={() => changeStatus(testimonial.id, 'rejected')}
+                          className="text-red-600 hover:text-red-800"
+                          title="Remove from Published"
+                        >
+                          <X size={18} />
+                        </button>
+                      )}
+                      
+                      {testimonial.status === 'rejected' && (
+                        <button 
+                          onClick={() => changeStatus(testimonial.id, 'published')}
+                          className="text-green-600 hover:text-green-800"
+                          title="Publish"
+                        >
+                          <Check size={18} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                  testimonial.status === 'published' ? 'bg-green-100 text-green-800' : 
-                  testimonial.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}
-                </div>
               </div>
-              
-              <div className="flex mb-3">
-                {renderStars(testimonial.rating)}
-                <span className="ml-2 text-sm text-gray-500">{testimonial.date}</span>
-              </div>
-              
-              <div className="relative">
-                <MessageSquare size={24} className="absolute left-0 top-0 text-gray-200" />
-                <p className="pl-8 text-gray-600 line-clamp-3">
-                  "{testimonial.message}"
-                </p>
-              </div>
-              
-              <div className="mt-6 flex justify-between">
-                <button 
-                  onClick={() => viewTestimonial(testimonial)}
-                  className="text-primary-600 hover:text-primary-800 text-sm font-medium"
-                >
-                  View Details
-                </button>
-                
-                <div className="flex space-x-2">
-                  {testimonial.status === 'pending' && (
-                    <>
-                      <button 
-                        onClick={() => changeStatus(testimonial.id, 'published')}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <Check size={18} />
-                      </button>
-                      <button 
-                        onClick={() => changeStatus(testimonial.id, 'rejected')}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X size={18} />
-                      </button>
-                    </>
-                  )}
-                  
-                  {testimonial.status === 'published' && (
-                    <button 
-                      onClick={() => changeStatus(testimonial.id, 'rejected')}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                  
-                  {testimonial.status === 'rejected' && (
-                    <button 
-                      onClick={() => changeStatus(testimonial.id, 'published')}
-                      className="text-green-600 hover:text-green-800"
-                    >
-                      <Check size={18} />
-                    </button>
-                  )}
-                </div>
-              </div>
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-12">
+              <AlertCircle size={48} className="text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No testimonials found</h3>
+              <p className="text-gray-500">Try adjusting your search or filters</p>
             </div>
-          </div>
-        ))}
-        
-        {filteredTestimonials.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center py-12">
-            <AlertCircle size={48} className="text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No testimonials found</h3>
-            <p className="text-gray-500">Try adjusting your search or filters</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       
       {/* Testimonial Modal */}
       {selectedTestimonial && (
@@ -266,6 +300,7 @@ const TestimonialsPage = () => {
                           src={selectedTestimonial.avatar} 
                           alt={selectedTestimonial.name} 
                           className="w-16 h-16 rounded-full object-cover mr-4"
+                          onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
                         />
                         <div>
                           <h4 className="font-semibold text-lg">{selectedTestimonial.name}</h4>
