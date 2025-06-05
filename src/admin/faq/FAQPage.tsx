@@ -408,7 +408,7 @@ const FAQPage = () => {
                   // Edit Mode
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="edit-question\" className=\"block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="edit-question" className="block text-sm font-medium text-gray-700 mb-1">
                         Question
                       </label>
                       <input
