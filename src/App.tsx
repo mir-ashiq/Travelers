@@ -16,9 +16,15 @@ import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './admin/AdminLayout';
 import Dashboard from './admin/Dashboard';
 import DestinationsAdmin from './admin/destinations/DestinationsPage';
+import NewDestinationPage from './admin/destinations/NewDestinationPage';
 import PackagesAdmin from './admin/packages/PackagesPage';
+import NewPackagePage from './admin/packages/NewPackagePage';
 import BookingsAdmin from './admin/bookings/BookingsPage';
 import TestimonialsAdmin from './admin/testimonials/TestimonialsPage';
+import GalleryAdmin from './admin/gallery/GalleryPage';
+import NewGalleryPage from './admin/gallery/NewGalleryPage';
+import UsersAdmin from './admin/users/UsersPage';
+import NewUserPage from './admin/users/NewUserPage';
 import SettingsAdmin from './admin/settings/SettingsPage';
 import Login from './admin/Login';
 
@@ -45,18 +51,39 @@ function App() {
         </AdminRoute>
       }>
         <Route index element={<Dashboard />} />
+        
+        {/* Destinations Routes */}
         <Route path="destinations" element={<DestinationsAdmin />} />
+        <Route path="destinations/new" element={<NewDestinationPage />} />
+        
+        {/* Packages Routes */}
         <Route path="packages" element={<PackagesAdmin />} />
+        <Route path="packages/new" element={<NewPackagePage />} />
+        
+        {/* Bookings Routes */}
         <Route path="bookings" element={<BookingsAdmin />} />
+        
+        {/* Gallery Routes */}
+        <Route path="gallery" element={<GalleryAdmin />} />
+        <Route path="gallery/new" element={<NewGalleryPage />} />
+        
+        {/* Users Routes */}
+        <Route path="users" element={<UsersAdmin />} />
+        <Route path="users/new" element={<NewUserPage />} />
+        
+        {/* Testimonials Routes */}
         <Route path="testimonials" element={<TestimonialsAdmin />} />
+        
+        {/* Settings Route */}
         <Route path="settings" element={<SettingsAdmin />} />
-        {/* Additional admin routes */}
+        
+        {/* Placeholder routes - replace with actual components when implemented */}
         <Route path="reports" element={<Dashboard />} />
         <Route path="support" element={<Dashboard />} />
         <Route path="faq" element={<Dashboard />} />
         <Route path="blog" element={<Dashboard />} />
-        <Route path="users" element={<Dashboard />} />
-        <Route path="gallery" element={<Dashboard />} />
+        
+        {/* Catch-all route for admin panel */}
         <Route path="*" element={<Dashboard />} />
       </Route>
       
