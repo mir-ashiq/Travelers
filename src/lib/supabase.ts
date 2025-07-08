@@ -13,10 +13,20 @@ try {
     // Create a dummy client that will be replaced later
     supabase = {
       from: () => ({
-        select: () => Promise.resolve({ data: [], error: new Error('No Supabase connection') }),
+        select: () => ({
+          eq: () => ({
+            order: () => ({
+              limit: () => Promise.resolve({ data: [], error: new Error('No Supabase connection') })
+            })
+          })
+        }),
         insert: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
-        update: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
-        delete: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
+        update: () => ({
+          eq: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') })
+        }),
+        delete: () => ({
+          eq: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') })
+        }),
       }),
       auth: {
         signIn: () => Promise.resolve({ data: null, error: new Error('No Supabase connection') }),
@@ -35,10 +45,20 @@ try {
   // Create a dummy client that will be replaced later
   supabase = {
     from: () => ({
-      select: () => Promise.resolve({ data: [], error: new Error('Invalid Supabase URL') }),
+      select: () => ({
+        eq: () => ({
+          order: () => ({
+            limit: () => Promise.resolve({ data: [], error: new Error('Invalid Supabase URL') })
+          })
+        })
+      }),
       insert: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
-      update: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
-      delete: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
+      update: () => ({
+        eq: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') })
+      }),
+      delete: () => ({
+        eq: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') })
+      }),
     }),
     auth: {
       signIn: () => Promise.resolve({ data: null, error: new Error('Invalid Supabase URL') }),
