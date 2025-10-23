@@ -222,7 +222,7 @@ const DestinationsPage = () => {
                             src={destination.image} 
                             alt={destination.name} 
                             className="w-10 h-10 rounded object-cover mr-3"
-                            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/40")}
+                            onError={(e) => (e.currentTarget.src = "https://placehold.co/40")}
                           />
                           <span className="font-medium text-gray-900">{destination.name}</span>
                         </div>
@@ -367,7 +367,7 @@ const DestinationsPage = () => {
                         src={selectedDestination.image}
                         alt={selectedDestination.name}
                         className="w-full h-48 object-cover rounded-lg mb-4"
-                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400x200")}
+                        onError={(e) => (e.currentTarget.src = "https://placehold.co/400x200")}
                       />
                       <h2 className="text-xl font-bold mb-2">{selectedDestination.name}</h2>
                       <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-4">

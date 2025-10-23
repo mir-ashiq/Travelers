@@ -120,7 +120,7 @@ const TestimonialSlider = () => {
                         src={testimonial.avatar} 
                         alt={testimonial.name} 
                         className="w-12 h-12 rounded-full object-cover mr-4"
-                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                        onError={(e) => (e.currentTarget.src = "https://placehold.co/100")}
                       />
                       <div>
                         <h4 className="font-semibold">{testimonial.name}</h4>

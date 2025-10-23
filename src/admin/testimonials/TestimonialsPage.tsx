@@ -178,7 +178,7 @@ const TestimonialsPage = () => {
                         src={testimonial.avatar} 
                         alt={testimonial.name} 
                         className="w-12 h-12 rounded-full object-cover mr-4"
-                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                        onError={(e) => (e.currentTarget.src = "https://placehold.co/100")}
                       />
                       <div>
                         <h3 className="font-semibold">{testimonial.name}</h3>
@@ -300,7 +300,7 @@ const TestimonialsPage = () => {
                           src={selectedTestimonial.avatar} 
                           alt={selectedTestimonial.name} 
                           className="w-16 h-16 rounded-full object-cover mr-4"
-                          onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                          onError={(e) => (e.currentTarget.src = "https://placehold.co/100")}
                         />
                         <div>
                           <h4 className="font-semibold text-lg">{selectedTestimonial.name}</h4>

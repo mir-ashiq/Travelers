@@ -102,7 +102,7 @@ const FeaturedDestinations = () => {
                     transition={{ duration: 0.5 }}
                     onError={(e) =>
                       (e.currentTarget.src =
-                        'https://via.placeholder.com/600x400?text=Image+Not+Available')
+                        'https://placehold.co/600x400?text=Image+Not+Available')
                     }
                   />
                   <motion.div

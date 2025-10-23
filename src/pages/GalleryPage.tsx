@@ -148,7 +148,7 @@ const GalleryPage = () => {
                     src={item.image} 
                     alt={item.title} 
                     className="w-full h-full object-cover"
-                    onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/600x400?text=Image+Not+Available")}
+                    onError={(e) => (e.currentTarget.src = "https://placehold.co/600x400?text=Image+Not+Available")}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-end justify-start p-4">
                     <div>
@@ -187,7 +187,7 @@ const GalleryPage = () => {
                 src={filteredGallery.find(item => item.id === selectedImage)?.image} 
                 alt={filteredGallery.find(item => item.id === selectedImage)?.title} 
                 className="w-full h-auto max-h-[80vh] object-contain"
-                onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/1200x800?text=Image+Not+Available")}
+                onError={(e) => (e.currentTarget.src = "https://placehold.co/1200x800?text=Image+Not+Available")}
               />
               <div className="mt-4 text-white text-center">
                 <h3 className="text-xl font-bold">{filteredGallery.find(item => item.id === selectedImage)?.title}</h3>

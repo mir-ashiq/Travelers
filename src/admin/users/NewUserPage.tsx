@@ -147,7 +147,7 @@ const NewUserPage = () => {
                       alt="Avatar preview" 
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = "https://via.placeholder.com/100";
+                        e.currentTarget.src = "https://placehold.co/100";
                         setFormData({...formData, avatar: ""});
                       }}
                     />

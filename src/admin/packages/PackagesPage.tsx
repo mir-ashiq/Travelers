@@ -274,7 +274,7 @@ const PackagesPage = () => {
                             src={pkg.image} 
                             alt={pkg.title} 
                             className="w-10 h-10 rounded object-cover mr-3"
-                            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/40")}
+                            onError={(e) => (e.currentTarget.src = "https://placehold.co/40")}
                           />
                           <div className="max-w-xs truncate">{pkg.title}</div>
                         </div>
@@ -437,7 +437,7 @@ const PackagesPage = () => {
                         src={selectedPackage.image}
                         alt={selectedPackage.title}
                         className="w-full h-48 object-cover rounded-lg mb-4"
-                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
+                        onError={(e) => (e.currentTarget.src = "https://placehold.co/800x400")}
                       />
                       <h2 className="text-xl font-bold mb-2">{selectedPackage.title}</h2>
                       <p className="text-gray-600 mb-4">{selectedPackage.description}</p>

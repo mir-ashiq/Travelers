@@ -161,7 +161,7 @@ const NewGalleryPage = () => {
                   src={formData.image} 
                   alt="Gallery image preview"
                   className="w-full h-64 object-cover"
-                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
+                  onError={(e) => (e.currentTarget.src = "https://placehold.co/800x400")}
                 />
               </div>
             </div>

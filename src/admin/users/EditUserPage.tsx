@@ -279,7 +279,7 @@ const EditUserPage = () => {
                     src={formData.avatar}
                     alt="Avatar"
                     className="h-20 w-20 rounded-full object-cover border border-gray-300"
-                    onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/80")}
+                    onError={(e) => (e.currentTarget.src = "https://placehold.co/80")}
                   />
                 </div>
               )}

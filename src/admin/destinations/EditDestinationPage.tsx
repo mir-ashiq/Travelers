@@ -251,7 +251,7 @@ const EditDestinationPage = () => {
                     src={formData.image}
                     alt="Preview"
                     className="h-40 w-full object-cover rounded-lg border border-gray-300"
-                    onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/600x400?text=Invalid+URL")}
+                    onError={(e) => (e.currentTarget.src = "https://placehold.co/600x400?text=Invalid+URL")}
                   />
                 </div>
               )}

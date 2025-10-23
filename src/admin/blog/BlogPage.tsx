@@ -256,7 +256,7 @@ const BlogPage = () => {
                           src={post.featured_image} 
                           alt={post.title} 
                           className="w-12 h-12 rounded object-cover mr-3"
-                          onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/48")}
+                          onError={(e) => (e.currentTarget.src = "https://placehold.co/48")}
                         />
                         <div>
                           <div className="font-medium text-gray-900">{post.title}</div>

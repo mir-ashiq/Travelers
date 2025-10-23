@@ -87,7 +87,7 @@ const DestinationsPage = () => {
                       src={destination.image} 
                       alt={destination.name} 
                       className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/600x400?text=Image+Not+Available")}
+                      onError={(e) => (e.currentTarget.src = "https://placehold.co/600x400?text=Image+Not+Available")}
                     />
                     <div className="absolute top-4 right-4 bg-primary-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
                       {destination.region}

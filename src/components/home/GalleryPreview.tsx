@@ -67,7 +67,7 @@ const GalleryPreview = () => {
                   src={item.image} 
                   alt={item.title} 
                   className="w-full h-full object-cover"
-                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/600x400?text=Image+Not+Available")}
+                  onError={(e) => (e.currentTarget.src = "https://placehold.co/600x400?text=Image+Not+Available")}
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <div className="text-center p-4">

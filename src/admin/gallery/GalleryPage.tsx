@@ -165,7 +165,7 @@ const GalleryPage = () => {
                   src={item.image} 
                   alt={item.title} 
                   className="w-full h-48 object-cover"
-                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/300x200")}
+                  onError={(e) => (e.currentTarget.src = "https://placehold.co/300x200")}
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-opacity duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <div className="flex space-x-2">
@@ -257,7 +257,7 @@ const GalleryPage = () => {
                         src={selectedImage.image}
                         alt={selectedImage.title}
                         className="w-full h-64 object-cover rounded-lg mb-4"
-                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
+                        onError={(e) => (e.currentTarget.src = "https://placehold.co/800x400")}
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <div>

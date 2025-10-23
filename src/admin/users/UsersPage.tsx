@@ -249,10 +249,10 @@ const UsersPage = () => {
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <img 
-                            src={user.avatar || "https://via.placeholder.com/40"} 
+                            src={user.avatar || "https://placehold.co/40"} 
                             alt={user.name} 
                             className="w-10 h-10 rounded-full object-cover mr-3"
-                            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/40")}
+                            onError={(e) => (e.currentTarget.src = "https://placehold.co/40")}
                           />
                           <div className="font-medium text-gray-900">{user.name}</div>
                         </div>
@@ -357,10 +357,10 @@ const UsersPage = () => {
                     
                     <div className="mb-6 flex items-center">
                       <img 
-                        src={selectedUser.avatar || "https://via.placeholder.com/100"} 
+                        src={selectedUser.avatar || "https://placehold.co/100"} 
                         alt={selectedUser.name} 
                         className="w-16 h-16 rounded-full object-cover mr-4"
-                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                        onError={(e) => (e.currentTarget.src = "https://placehold.co/100")}
                       />
                       <div>
                         <h4 className="text-xl font-semibold">{selectedUser.name}</h4>

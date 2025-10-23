@@ -72,7 +72,7 @@ const PopularPackages = () => {
                     src={pkg.image} 
                     alt={pkg.title} 
                     className="w-full h-full object-cover"
-                    onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400x300?text=Image+Not+Available")}
+                    onError={(e) => (e.currentTarget.src = "https://placehold.co/400x300?text=Image+Not+Available")}
                   />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent h-24"></div>
                   <div className="absolute bottom-3 left-3 flex items-center">

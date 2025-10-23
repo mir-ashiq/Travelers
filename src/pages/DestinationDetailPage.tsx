@@ -132,7 +132,7 @@ const DestinationDetailPage = () => {
               src={destination.image}
               alt={destination.name}
               className="w-full h-96 object-cover rounded-lg shadow-lg"
-              onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/1200x400?text=Image+Not+Available")}
+              onError={(e) => (e.currentTarget.src = "https://placehold.co/1200x400?text=Image+Not+Available")}
             />
           </div>
 

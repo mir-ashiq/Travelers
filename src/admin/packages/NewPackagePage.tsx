@@ -380,7 +380,7 @@ const NewPackagePage = () => {
                   src={formData.image} 
                   alt="Package preview"
                   className="w-full h-40 object-cover"
-                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400")}
+                  onError={(e) => (e.currentTarget.src = "https://placehold.co/800x400")}
                 />
               </div>
             </div>

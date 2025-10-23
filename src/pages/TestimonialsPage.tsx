@@ -80,7 +80,7 @@ const TestimonialsPage = () => {
         message: formData.get('message') as string,
         status: 'pending',
         date: new Date().toISOString().split('T')[0],
-        avatar: 'https://via.placeholder.com/100' // Default avatar
+        avatar: 'https://placehold.co/100' // Default avatar
       };
       
       const { error } = await supabase
@@ -261,7 +261,7 @@ const TestimonialsPage = () => {
                       src={testimonial.avatar} 
                       alt={testimonial.name} 
                       className="w-12 h-12 rounded-full object-cover mr-4"
-                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/100")}
+                      onError={(e) => (e.currentTarget.src = "https://placehold.co/100")}
                     />
                     <div>
                       <h4 className="font-semibold">{testimonial.name}</h4>
