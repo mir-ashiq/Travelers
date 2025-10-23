@@ -1,7 +1,8 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface Slide {
   id: number;
@@ -12,7 +13,7 @@ interface Slide {
   link: string;
 }
 
-const slides: Slide[] = [
+const defaultSlides: Slide[] = [
   {
     id: 1,
     image: 'https://images.pexels.com/photos/1486520/pexels-photo-1486520.jpeg?auto=compress&cs=tinysrgb&w=1920',
@@ -40,6 +41,29 @@ const slides: Slide[] = [
 ];
 
 const HeroCarousel = () => {
+  const [slides, setSlides] = useState<Slide[]>(defaultSlides);
+
+  useEffect(() => {
+    const loadSlides = async () => {
+      try {
+        const { data } = await (supabase as any)
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'hero_slides')
+          .single();
+
+        if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
+          setSlides(data.value);
+        }
+      } catch (error) {
+        console.error('Error loading hero slides:', error);
+        // Keep default slides on error
+      }
+    };
+
+    loadSlides();
+  }, []);
+
   const settings = {
     dots: true,
     infinite: true,

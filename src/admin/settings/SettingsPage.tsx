@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
-import { Save, Upload, X, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Upload, X, Plus, Edit2, Trash2, AlertCircle, Loader } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  
   const [siteName, setSiteName] = useState('JKLG Travel Agency');
   const [siteEmail, setSiteEmail] = useState('info@jklgtravel.com');
   const [sitePhone, setSitePhone] = useState('+91 98765 43210');
@@ -50,9 +55,242 @@ const SettingsPage = () => {
     { id: 4, name: 'Feedback Request', subject: 'How was your experience with JKLG Travel?' }
   ]);
   
-  const handleSaveSettings = () => {
-    // In a real app, this would save to your backend
-    alert('Settings saved successfully!');
+  // SEO Settings
+  const [metaTitle, setMetaTitle] = useState('JKLG Travel Agency | Explore Jammu, Kashmir, Ladakh, and Gurez');
+  const [metaDescription, setMetaDescription] = useState('Discover the breathtaking beauty of Jammu, Kashmir, Ladakh, and Gurez with our expertly crafted tour packages. Create unforgettable memories with JKLG Travel Agency.');
+  
+  // Email Config
+  const [fromName, setFromName] = useState('JKLG Travel');
+  const [fromEmail, setFromEmail] = useState('bookings@jklgtravel.com');
+  const [emailFooter, setEmailFooter] = useState('© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India');
+  
+  // UI Preferences
+  const [theme, setTheme] = useState('light');
+  const [layout, setLayout] = useState('compact');
+  const [fontSize, setFontSize] = useState('medium');
+  const [contrast, setContrast] = useState('normal');
+  
+  // Display Settings with Sliders
+  const [displaySettings, setDisplaySettings] = useState({
+    heroBrightness: 70,
+    featureOpacity: 100,
+    animationSpeed: 50
+  });
+
+  // Load settings from database on mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      
+      // Load general settings
+      const { data: generalData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'general_settings')
+        .single();
+      
+      if (generalData?.value) {
+        setSiteName(generalData.value.siteName || 'JKLG Travel Agency');
+        setSiteEmail(generalData.value.siteEmail || 'info@jklgtravel.com');
+        setSitePhone(generalData.value.sitePhone || '+91 98765 43210');
+        setSiteAddress(generalData.value.siteAddress || '123 Tourism Road, Srinagar, Jammu & Kashmir, India');
+      }
+
+      // Load social links
+      const { data: socialData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'social_links')
+        .single();
+      
+      if (socialData?.value) {
+        setSocialLinks(socialData.value);
+      }
+
+      // Load display settings
+      const { data: displayData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'display_settings')
+        .single();
+      
+      if (displayData?.value) {
+        setDisplaySettings(displayData.value);
+      }
+
+      // Load hero slides if stored
+      const { data: heroData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'hero_slides')
+        .single();
+      
+      if (heroData?.value && Array.isArray(heroData.value) && heroData.value.length > 0) {
+        setHeroSlides(heroData.value);
+      }
+
+      // Load SEO settings
+      const { data: seoData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'seo_settings')
+        .single();
+      
+      if (seoData?.value) {
+        setMetaTitle(seoData.value.metaTitle || 'JKLG Travel Agency | Explore Jammu, Kashmir, Ladakh, and Gurez');
+        setMetaDescription(seoData.value.metaDescription || 'Discover the breathtaking beauty of Jammu, Kashmir, Ladakh, and Gurez with our expertly crafted tour packages. Create unforgettable memories with JKLG Travel Agency.');
+      }
+
+      // Load email templates
+      const { data: emailTemplatesData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'email_templates')
+        .single();
+      
+      if (emailTemplatesData?.value && Array.isArray(emailTemplatesData.value)) {
+        setEmailTemplates(emailTemplatesData.value);
+      }
+
+      // Load email config
+      const { data: emailConfigData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'email_config')
+        .single();
+      
+      if (emailConfigData?.value) {
+        setFromName(emailConfigData.value.fromName || 'JKLG Travel');
+        setFromEmail(emailConfigData.value.fromEmail || 'bookings@jklgtravel.com');
+        setEmailFooter(emailConfigData.value.emailFooter || '© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India');
+      }
+
+      // Load UI preferences
+      const { data: uiData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'ui_preferences')
+        .single();
+      
+      if (uiData?.value) {
+        setTheme(uiData.value.theme || 'light');
+        setLayout(uiData.value.layout || 'compact');
+        setFontSize(uiData.value.fontSize || 'medium');
+        setContrast(uiData.value.contrast || 'normal');
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      setSaveMessage('Saving...');
+
+      // Save general settings
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'general_settings',
+            value: { siteName, siteEmail, sitePhone, siteAddress }
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save social links
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'social_links',
+            value: socialLinks
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save display settings
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'display_settings',
+            value: displaySettings
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save hero slides
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'hero_slides',
+            value: heroSlides
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save SEO settings
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'seo_settings',
+            value: { metaTitle, metaDescription }
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save email templates
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'email_templates',
+            value: emailTemplates
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save email config
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'email_config',
+            value: { fromName, fromEmail, emailFooter }
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save UI preferences
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'ui_preferences',
+            value: { theme, layout, fontSize, contrast }
+          },
+          { onConflict: 'key' }
+        );
+
+      setSaveMessage('✅ Settings saved successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setSaveMessage('❌ Error saving settings');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const editSlide = (slide: any) => {
@@ -87,18 +325,37 @@ const SettingsPage = () => {
 
   return (
     <div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader className="animate-spin text-primary-600" size={32} />
+          <span className="ml-2 text-gray-600">Loading settings...</span>
+        </div>
+      ) : (
+      <>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold">Site Settings</h1>
           <p className="text-gray-600">Manage and customize your travel agency website</p>
         </div>
-        <button 
-          onClick={handleSaveSettings}
-          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
-        >
-          <Save size={18} className="mr-2" />
-          Save Changes
-        </button>
+        <div className="flex items-center gap-4">
+          {saveMessage && (
+            <div className="text-sm font-medium px-3 py-2 rounded-lg bg-blue-50 text-blue-800">
+              {saveMessage}
+            </div>
+          )}
+          <button 
+            onClick={handleSaveSettings}
+            disabled={saving}
+            className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg inline-flex items-center"
+          >
+            {saving ? (
+              <Loader size={18} className="animate-spin mr-2" />
+            ) : (
+              <Save size={18} className="mr-2" />
+            )}
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
       
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -143,6 +400,16 @@ const SettingsPage = () => {
               }`}
             >
               Email Templates
+            </button>
+            <button
+              onClick={() => setActiveTab('display')}
+              className={`mr-8 py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'display'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Display Settings
             </button>
           </nav>
         </div>
@@ -254,7 +521,8 @@ const SettingsPage = () => {
                     <input 
                       type="text" 
                       id="metaTitle" 
-                      defaultValue="JKLG Travel Agency | Explore Jammu, Kashmir, Ladakh, and Gurez"
+                      value={metaTitle}
+                      onChange={(e) => setMetaTitle(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -266,7 +534,8 @@ const SettingsPage = () => {
                     <textarea 
                       id="metaDescription" 
                       rows={3}
-                      defaultValue="Discover the breathtaking beauty of Jammu, Kashmir, Ladakh, and Gurez with our expertly crafted tour packages. Create unforgettable memories with JKLG Travel Agency."
+                      value={metaDescription}
+                      onChange={(e) => setMetaDescription(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -486,7 +755,8 @@ const SettingsPage = () => {
                     <input 
                       type="text" 
                       id="fromName" 
-                      defaultValue="JKLG Travel"
+                      value={fromName}
+                      onChange={(e) => setFromName(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -498,7 +768,8 @@ const SettingsPage = () => {
                     <input 
                       type="email" 
                       id="fromEmail" 
-                      defaultValue="bookings@jklgtravel.com"
+                      value={fromEmail}
+                      onChange={(e) => setFromEmail(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -510,10 +781,174 @@ const SettingsPage = () => {
                     <textarea 
                       id="emailFooter" 
                       rows={3}
-                      defaultValue="© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India"
+                      value={emailFooter}
+                      onChange={(e) => setEmailFooter(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Display Settings Tab */}
+          {activeTab === 'display' && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-medium mb-4">Display Settings</h2>
+              
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 space-y-8">
+                
+                {/* Hero Image Brightness Slider */}
+                <div>
+                  <label htmlFor="brightness" className="block text-sm font-medium text-gray-700 mb-3">
+                    Hero Section Brightness
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      id="brightness"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={displaySettings.heroBrightness}
+                      onChange={(e) => setDisplaySettings({...displaySettings, heroBrightness: parseInt(e.target.value)})}
+                      className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                    />
+                    <div className="w-16 text-center">
+                      <span className="text-sm font-medium text-gray-900">{displaySettings.heroBrightness}%</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Adjust how bright or dark the hero section appears. 0% is completely dark, 100% is normal brightness.
+                  </p>
+                </div>
+                
+                {/* Feature Section Opacity Slider */}
+                <div>
+                  <label htmlFor="opacity" className="block text-sm font-medium text-gray-700 mb-3">
+                    Feature Cards Opacity
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      id="opacity"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={displaySettings.featureOpacity}
+                      onChange={(e) => setDisplaySettings({...displaySettings, featureOpacity: parseInt(e.target.value)})}
+                      className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                    />
+                    <div className="w-16 text-center">
+                      <span className="text-sm font-medium text-gray-900">{displaySettings.featureOpacity}%</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Control the transparency of feature cards. 0% is invisible, 100% is fully opaque.
+                  </p>
+                </div>
+                
+                {/* Animation Speed Slider */}
+                <div>
+                  <label htmlFor="animation" className="block text-sm font-medium text-gray-700 mb-3">
+                    Animation Speed
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      id="animation"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={displaySettings.animationSpeed}
+                      onChange={(e) => setDisplaySettings({...displaySettings, animationSpeed: parseInt(e.target.value)})}
+                      className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                    />
+                    <div className="w-16 text-center">
+                      <span className="text-sm font-medium text-gray-900">{displaySettings.animationSpeed}%</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Adjust animation speed from slow (0%) to fast (100%).
+                  </p>
+                </div>
+                
+                {/* Live Preview */}
+                <div className="border-t border-gray-300 pt-6 mt-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-4">Live Preview</h3>
+                  <div 
+                    className="w-full h-32 rounded-lg border-2 border-gray-300 bg-gradient-to-r from-primary-400 to-primary-600 flex items-center justify-center overflow-hidden"
+                    style={{ opacity: displaySettings.featureOpacity / 100 }}
+                  >
+                    <div className="text-center">
+                      <p className="text-white text-sm font-medium">Hero Section Preview</p>
+                      <p className="text-white/80 text-xs">Brightness: {displaySettings.heroBrightness}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Additional Display Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="theme" className="block text-sm font-medium text-gray-700 mb-2">
+                    Default Theme
+                  </label>
+                  <select 
+                    id="theme"
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="light">Light Mode</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="auto">Auto (System)</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="layout" className="block text-sm font-medium text-gray-700 mb-2">
+                    Default Layout
+                  </label>
+                  <select 
+                    id="layout"
+                    value={layout}
+                    onChange={(e) => setLayout(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="compact">Compact</option>
+                    <option value="comfortable">Comfortable</option>
+                    <option value="spacious">Spacious</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="fontsize" className="block text-sm font-medium text-gray-700 mb-2">
+                    Default Font Size
+                  </label>
+                  <select 
+                    id="fontsize"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="contrast" className="block text-sm font-medium text-gray-700 mb-2">
+                    Contrast Level
+                  </label>
+                  <select 
+                    id="contrast"
+                    value={contrast}
+                    onChange={(e) => setContrast(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                    <option value="maximum">Maximum</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -654,6 +1089,8 @@ const SettingsPage = () => {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

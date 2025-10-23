@@ -5,7 +5,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Validate URL format before creating client
-let supabase;
+let supabase: any;
 
 try {
   if (!supabaseUrl || !supabaseAnonKey) {
