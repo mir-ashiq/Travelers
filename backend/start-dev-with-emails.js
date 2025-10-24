@@ -3,7 +3,7 @@
 /**
  * Development Server with Email Service
  * Starts:
- * 1. Vite dev server (hot reload) on port 5173
+ * 1. Express backend server on port 3000
  * 2. Email sender service (background process)
  * 
  * Usage: node start-dev-with-emails.js
@@ -29,21 +29,21 @@ console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║  📱 JKLG Travel Agency Development Server             ║
 ║                                                        ║
-║  Website: http://localhost:5173 (with hot reload)    ║
+║  Backend API: http://localhost:3000 (Express)        ║
 ║  Email Service: Running automatically                ║
 ╚════════════════════════════════════════════════════════╝
 `);
 
-// Start Vite dev server
-console.log('🚀 Starting Vite development server...\n');
-const viteProcess = spawn('npm', ['run', 'dev'], {
+// Start Express backend server
+console.log('🚀 Starting Express backend server...\n');
+const serverProcess = spawn('node', ['server.js'], {
   cwd: PROJECT_ROOT,
   stdio: 'inherit',
   shell: true,
 });
 
-viteProcess.on('exit', (code) => {
-  console.log(`\n⚠️  Vite server exited with code ${code}`);
+serverProcess.on('exit', (code) => {
+  console.log(`\n⚠️  Backend server exited with code ${code}`);
   if (emailServiceProcess) {
     emailServiceProcess.kill();
   }
@@ -113,7 +113,7 @@ process.on('SIGINT', () => {
     console.log('🛑 Stopping email service...');
     emailServiceProcess.kill();
   }
-  if (viteProcess) {
+  if (serverProcess) {
     viteProcess.kill();
   }
   process.exit(0);
@@ -125,7 +125,7 @@ process.on('SIGTERM', () => {
     console.log('🛑 Stopping email service...');
     emailServiceProcess.kill();
   }
-  if (viteProcess) {
+  if (serverProcess) {
     viteProcess.kill();
   }
   process.exit(0);
