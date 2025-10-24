@@ -1,0 +1,24 @@
+{
+  "buildCommand": "npm install",
+  "startCommand": "npm run start:prod",
+  "variables": {
+    "SMTP_HOST": {
+      "description": "SMTP server address"
+    },
+    "SMTP_PORT": {
+      "description": "SMTP server port"
+    },
+    "SMTP_USER": {
+      "description": "SMTP email address"
+    },
+    "SMTP_PASSWORD": {
+      "description": "SMTP password"
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "description": "Supabase service role key"
+    },
+    "PORT": {
+      "description": "Server port (default: 3000)"
+    }
+  }
+}
