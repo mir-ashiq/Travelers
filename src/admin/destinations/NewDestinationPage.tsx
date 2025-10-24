@@ -11,7 +11,18 @@ const NewDestinationPage = () => {
     region: 'Kashmir',
     description: '',
     image: '',
-    featured: false
+    featured: false,
+    altitude: '',
+    best_season: '',
+    distance: '',
+    average_temperature: '',
+    accommodation: '',
+    difficulty: 'Easy',
+    attractions: [] as string[],
+    activities: [] as string[],
+    best_for: [] as string[],
+    latitude: '',
+    longitude: ''
   });
   const [loading, setLoading] = useState(false);
   
@@ -30,6 +41,30 @@ const NewDestinationPage = () => {
       [name]: checked
     });
   };
+
+  const handleArrayChange = (fieldName: 'attractions' | 'activities' | 'best_for', index: number, value: string) => {
+    const arr = [...(formData[fieldName] as string[])];
+    arr[index] = value;
+    setFormData({
+      ...formData,
+      [fieldName]: arr
+    });
+  };
+
+  const addArrayItem = (fieldName: 'attractions' | 'activities' | 'best_for') => {
+    setFormData({
+      ...formData,
+      [fieldName]: [...(formData[fieldName] as string[]), '']
+    });
+  };
+
+  const removeArrayItem = (fieldName: 'attractions' | 'activities' | 'best_for', index: number) => {
+    const arr = (formData[fieldName] as string[]).filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      [fieldName]: arr
+    });
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +76,7 @@ const NewDestinationPage = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('destinations')
         .insert([
           {
@@ -49,7 +84,18 @@ const NewDestinationPage = () => {
             region: formData.region,
             description: formData.description,
             image: formData.image,
-            featured: formData.featured
+            featured: formData.featured,
+            altitude: formData.altitude ? parseInt(formData.altitude) : null,
+            best_season: formData.best_season || null,
+            distance: formData.distance ? parseInt(formData.distance) : null,
+            average_temperature: formData.average_temperature || null,
+            accommodation: formData.accommodation || null,
+            difficulty: formData.difficulty,
+            attractions: formData.attractions.filter((a: string) => a.trim()),
+            activities: formData.activities.filter((a: string) => a.trim()),
+            best_for: formData.best_for.filter((b: string) => b.trim()),
+            latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+            longitude: formData.longitude ? parseFloat(formData.longitude) : null
           }
         ])
         .select();
@@ -199,6 +245,230 @@ const NewDestinationPage = () => {
               </div>
             </div>
           )}
+
+          {/* Location & Climate Details */}
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-4">Location & Climate Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Altitude (meters)
+                </label>
+                <input
+                  type="number"
+                  name="altitude"
+                  value={formData.altitude}
+                  onChange={handleChange}
+                  placeholder="e.g., 2600"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Best Season
+                </label>
+                <input
+                  type="text"
+                  name="best_season"
+                  value={formData.best_season}
+                  onChange={handleChange}
+                  placeholder="e.g., June to September"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Distance from Nearest City (km)
+                </label>
+                <input
+                  type="number"
+                  name="distance"
+                  value={formData.distance}
+                  onChange={handleChange}
+                  placeholder="e.g., 52"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Average Temperature
+                </label>
+                <input
+                  type="text"
+                  name="average_temperature"
+                  value={formData.average_temperature}
+                  onChange={handleChange}
+                  placeholder="e.g., 15-25°C"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Accommodation Types
+                </label>
+                <input
+                  type="text"
+                  name="accommodation"
+                  value={formData.accommodation}
+                  onChange={handleChange}
+                  placeholder="e.g., Hotels, Hostels, Guesthouses"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Difficulty & Coordinates */}
+          <div className="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-4">Difficulty & Coordinates</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Difficulty Level
+                </label>
+                <select
+                  name="difficulty"
+                  value={formData.difficulty}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Moderate">Moderate</option>
+                  <option value="Challenging">Challenging</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  name="latitude"
+                  value={formData.latitude}
+                  onChange={handleChange}
+                  placeholder="e.g., 34.2143"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  name="longitude"
+                  value={formData.longitude}
+                  onChange={handleChange}
+                  placeholder="e.g., 75.5241"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Attractions */}
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-3">Main Attractions</h3>
+            <div className="space-y-2">
+              {formData.attractions.map((attraction, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={attraction}
+                    onChange={(e) => handleArrayChange('attractions', index, e.target.value)}
+                    placeholder={`Attraction ${index + 1}`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeArrayItem('attractions', index)}
+                    className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addArrayItem('attractions')}
+                className="w-full bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg font-medium"
+              >
+                + Add Attraction
+              </button>
+            </div>
+          </div>
+
+          {/* Activities */}
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-3">Available Activities</h3>
+            <div className="space-y-2">
+              {formData.activities.map((activity, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={activity}
+                    onChange={(e) => handleArrayChange('activities', index, e.target.value)}
+                    placeholder={`Activity ${index + 1}`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeArrayItem('activities', index)}
+                    className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addArrayItem('activities')}
+                className="w-full bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-2 rounded-lg font-medium"
+              >
+                + Add Activity
+              </button>
+            </div>
+          </div>
+
+          {/* Best For */}
+          <div className="mb-6 bg-pink-50 border border-pink-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-3">Perfect For</h3>
+            <div className="space-y-2">
+              {formData.best_for.map((category: string, index: number) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => handleArrayChange('best_for', index, e.target.value)}
+                    placeholder={`Category ${index + 1} (e.g., families, adventure, nature)`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeArrayItem('best_for', index)}
+                    className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addArrayItem('best_for')}
+                className="w-full bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 py-2 rounded-lg font-medium"
+              >
+                + Add Category
+              </button>
+            </div>
+          </div>
           
           <div className="mb-6">
             <div className="flex items-center">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Eye, 
   Search, 
@@ -19,15 +19,14 @@ import {
   Mail,
   Phone,
   FileText,
-  Trash2,
   ChevronUp,
   TrendingUp,
   Globe,
   X,
-  UserCheck,
-  Loader
+  UserCheck
 } from 'lucide-react';
 import { supabase, Booking } from '../../lib/supabase';
+import { sendStatusUpdateEmail } from '../../lib/emailService';
 import { toast } from 'react-hot-toast';
 import dayjs from 'dayjs';
 
@@ -132,12 +131,16 @@ const BookingsPage = () => {
     
     // Apply sorting
     if (sortConfig) {
+      const { key, direction } = sortConfig;
       results.sort((a, b) => {
-        if (a[sortConfig.key as keyof typeof a] < b[sortConfig.key as keyof typeof b]) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
+        const aValue = a[key as keyof typeof a] ?? '';
+        const bValue = b[key as keyof typeof b] ?? '';
+        
+        if (aValue < bValue) {
+          return direction === 'ascending' ? -1 : 1;
         }
-        if (a[sortConfig.key as keyof typeof a] > b[sortConfig.key as keyof typeof b]) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
+        if (aValue > bValue) {
+          return direction === 'ascending' ? 1 : -1;
         }
         return 0;
       });
@@ -187,6 +190,10 @@ const BookingsPage = () => {
   // Update booking status
   const updateStatus = async (id: number, status: string) => {
     try {
+      // Get booking details
+      const booking = bookings.find(b => b.id === id);
+      if (!booking) throw new Error('Booking not found');
+
       const { error } = await supabase
         .from('bookings')
         .update({ status })
@@ -196,8 +203,8 @@ const BookingsPage = () => {
       
       // Update local state
       setBookings(prevBookings => 
-        prevBookings.map(booking => 
-          booking.id === id ? {...booking, status} : booking
+        prevBookings.map(b => 
+          b.id === id ? {...b, status: status as 'Pending' | 'Confirmed' | 'Cancelled'} : b
         )
       );
       
@@ -205,7 +212,18 @@ const BookingsPage = () => {
       if (selectedBooking && selectedBooking.id === id) {
         setSelectedBooking({...selectedBooking, status} as Booking);
       }
-      
+
+      // Send status update email (non-blocking)
+      sendStatusUpdateEmail(
+        booking.name,
+        booking.email,
+        booking.package,
+        booking.id,
+        booking.travel_date,
+        booking.amount,
+        status
+      ).catch((err) => console.error('Email sending failed (non-blocking):', err));
+
       toast.success(`Booking status updated to ${status}`);
     } catch (error) {
       console.error('Error updating booking status:', error);
@@ -225,12 +243,29 @@ const BookingsPage = () => {
       
       if (error) throw error;
       
-      // Update local state
-      setBookings(prevBookings => 
-        prevBookings.map(booking => 
-          selectedBookings.includes(booking.id) ? {...booking, status} : booking
-        )
-      );
+      // Update local state and send emails for each booking
+      setBookings(prevBookings => {
+        const updatedBookings = prevBookings.map(booking => 
+          selectedBookings.includes(booking.id) ? {...booking, status: status as 'Pending' | 'Confirmed' | 'Cancelled'} : booking
+        );
+        
+        // Send emails for all updated bookings (non-blocking)
+        updatedBookings.forEach(booking => {
+          if (selectedBookings.includes(booking.id)) {
+            sendStatusUpdateEmail(
+              booking.name,
+              booking.email,
+              booking.package,
+              booking.id,
+              booking.travel_date,
+              booking.amount,
+              status
+            ).catch((err) => console.error('Email sending failed (non-blocking):', err));
+          }
+        });
+        
+        return updatedBookings;
+      });
       
       // Reset selection after bulk action
       setSelectedBookings([]);
@@ -323,38 +358,38 @@ const BookingsPage = () => {
     return dayjs(dateString).format('YYYY-MM-DD');
   };
 
-  // Assign booking
-  const assignBooking = async (id: number, assignee: string) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ assigned_to: assignee })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Update local state
-      setBookings(bookings.map(booking => {
-        if (booking.id === id) {
-          return {...booking, assigned_to: assignee};
-        }
-        return booking;
-      }));
-      
-      // Update selected booking if it's the one being modified
-      if (selectedBooking && selectedBooking.id === id) {
-        setSelectedBooking({
-          ...selectedBooking,
-          assigned_to: assignee
-        });
-      }
-      
-      toast.success(`Booking assigned to ${assignee}`);
-    } catch (error) {
-      console.error('Error assigning booking:', error);
-      toast.error('Failed to assign booking');
-    }
-  };
+  // TODO: Assign booking - Uncomment when reassignment feature is implemented
+  // const assignBooking = async (id: number, assignee: string) => {
+  //   try {
+  //     const { error } = await supabase
+  //       .from('bookings')
+  //       .update({ assigned_to: assignee })
+  //       .eq('id', id);
+  //     
+  //     if (error) throw error;
+  //     
+  //     // Update local state
+  //     setBookings(bookings.map(booking => {
+  //       if (booking.id === id) {
+  //         return {...booking, assigned_to: assignee};
+  //       }
+  //       return booking;
+  //     }));
+  //     
+  //     // Update selected booking if it's the one being modified
+  //     if (selectedBooking && selectedBooking.id === id) {
+  //       setSelectedBooking({
+  //         ...selectedBooking,
+  //         assigned_to: assignee
+  //       });
+  //     }
+  //     
+  //     toast.success(`Booking assigned to ${assignee}`);
+  //   } catch (error) {
+  //     console.error('Error assigning booking:', error);
+  //     toast.error('Failed to assign booking');
+  //   }
+  // };
 
   // Calculate statistics
   const stats = {

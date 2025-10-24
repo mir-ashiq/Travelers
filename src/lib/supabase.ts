@@ -109,6 +109,18 @@ export type Destination = {
   description: string;
   image: string;
   featured: boolean;
+  // New fields
+  altitude?: number; // in meters
+  bestSeason?: string; // e.g., "June to September"
+  distance?: number; // in km from nearest city
+  attractions?: string[]; // array of nearby attractions
+  activities?: string[]; // array of activities available
+  latitude?: number; // for map integration
+  longitude?: number; // for map integration
+  averageTemperature?: string; // e.g., "15-25°C"
+  accommodation?: string; // types of accommodation available
+  difficulty?: 'Easy' | 'Moderate' | 'Challenging'; // difficulty level
+  bestFor?: string[]; // e.g., ["families", "adventure", "nature"]
   created_at?: string;
 };
 

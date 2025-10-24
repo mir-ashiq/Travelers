@@ -64,6 +64,15 @@ const SettingsPage = () => {
   const [fromEmail, setFromEmail] = useState('bookings@jklgtravel.com');
   const [emailFooter, setEmailFooter] = useState('© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India');
   
+  // SMTP Config
+  const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
+  const [smtpPort, setSmtpPort] = useState(587);
+  const [smtpUser, setSmtpUser] = useState('your-email@gmail.com');
+  const [smtpPassword, setSmtpPassword] = useState('');
+  const [smtpFromEmail, setSmtpFromEmail] = useState('noreply@jklgtravel.com');
+  const [useTLS, setUseTLS] = useState(true);
+  const [smtpEnabled, setSmtpEnabled] = useState(false);
+  
   // UI Preferences
   const [theme, setTheme] = useState('light');
   const [layout, setLayout] = useState('compact');
@@ -169,6 +178,23 @@ const SettingsPage = () => {
         setEmailFooter(emailConfigData.value.emailFooter || '© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India');
       }
 
+      // Load SMTP config
+      const { data: smtpData } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'smtp_config')
+        .single();
+      
+      if (smtpData?.value) {
+        setSmtpHost(smtpData.value.smtpHost || 'smtp.gmail.com');
+        setSmtpPort(smtpData.value.smtpPort || 587);
+        setSmtpUser(smtpData.value.smtpUser || 'your-email@gmail.com');
+        setSmtpPassword(smtpData.value.smtpPassword || '');
+        setSmtpFromEmail(smtpData.value.smtpFromEmail || 'noreply@jklgtravel.com');
+        setUseTLS(smtpData.value.useTLS !== false);
+        setSmtpEnabled(smtpData.value.enabled || false);
+      }
+
       // Load UI preferences
       const { data: uiData } = await supabase
         .from('site_settings')
@@ -267,6 +293,17 @@ const SettingsPage = () => {
           {
             key: 'email_config',
             value: { fromName, fromEmail, emailFooter }
+          },
+          { onConflict: 'key' }
+        );
+
+      // Save SMTP config
+      await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: 'smtp_config',
+            value: { smtpHost, smtpPort, smtpUser, smtpPassword, smtpFromEmail, useTLS, enabled: smtpEnabled }
           },
           { onConflict: 'key' }
         );
@@ -400,6 +437,16 @@ const SettingsPage = () => {
               }`}
             >
               Email Templates
+            </button>
+            <button
+              onClick={() => setActiveTab('smtp')}
+              className={`mr-8 py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'smtp'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              SMTP Settings
             </button>
             <button
               onClick={() => setActiveTab('display')}
@@ -949,6 +996,135 @@ const SettingsPage = () => {
                     <option value="high">High</option>
                     <option value="maximum">Maximum</option>
                   </select>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* SMTP Settings Tab */}
+          {activeTab === 'smtp' && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-medium mb-4">SMTP Configuration</h2>
+              
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* SMTP Host */}
+                  <div>
+                    <label htmlFor="smtpHost" className="block text-sm font-medium text-gray-700 mb-1">
+                      SMTP Host
+                    </label>
+                    <input
+                      id="smtpHost"
+                      type="text"
+                      value={smtpHost}
+                      onChange={(e) => setSmtpHost(e.target.value)}
+                      placeholder="e.g., smtp.gmail.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">The SMTP server hostname</p>
+                  </div>
+                  
+                  {/* SMTP Port */}
+                  <div>
+                    <label htmlFor="smtpPort" className="block text-sm font-medium text-gray-700 mb-1">
+                      SMTP Port
+                    </label>
+                    <input
+                      id="smtpPort"
+                      type="number"
+                      value={smtpPort}
+                      onChange={(e) => setSmtpPort(parseInt(e.target.value))}
+                      min="1"
+                      max="65535"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Usually 25, 465 (SSL), or 587 (TLS)</p>
+                  </div>
+                  
+                  {/* SMTP Username */}
+                  <div>
+                    <label htmlFor="smtpUser" className="block text-sm font-medium text-gray-700 mb-1">
+                      SMTP Username
+                    </label>
+                    <input
+                      id="smtpUser"
+                      type="text"
+                      value={smtpUser}
+                      onChange={(e) => setSmtpUser(e.target.value)}
+                      placeholder="e.g., your-email@gmail.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Email account for SMTP authentication</p>
+                  </div>
+                  
+                  {/* SMTP Password */}
+                  <div>
+                    <label htmlFor="smtpPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                      SMTP Password
+                    </label>
+                    <input
+                      id="smtpPassword"
+                      type="password"
+                      value={smtpPassword}
+                      onChange={(e) => setSmtpPassword(e.target.value)}
+                      placeholder="Enter SMTP password"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Password or app-specific password</p>
+                  </div>
+                  
+                  {/* From Email */}
+                  <div className="md:col-span-2">
+                    <label htmlFor="smtpFromEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                      From Email Address
+                    </label>
+                    <input
+                      id="smtpFromEmail"
+                      type="email"
+                      value={smtpFromEmail}
+                      onChange={(e) => setSmtpFromEmail(e.target.value)}
+                      placeholder="e.g., noreply@jklgtravel.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Email address that appears as sender</p>
+                  </div>
+                  
+                  {/* TLS/SSL Toggle */}
+                  <div className="flex items-center space-x-4">
+                    <label htmlFor="useTLS" className="flex items-center cursor-pointer">
+                      <input
+                        id="useTLS"
+                        type="checkbox"
+                        checked={useTLS}
+                        onChange={(e) => setUseTLS(e.target.checked)}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700">Use TLS/SSL</span>
+                    </label>
+                    <p className="text-xs text-gray-500">Enable encryption for connection</p>
+                  </div>
+                  
+                  {/* Enable SMTP Toggle */}
+                  <div className="flex items-center space-x-4">
+                    <label htmlFor="smtpEnabled" className="flex items-center cursor-pointer">
+                      <input
+                        id="smtpEnabled"
+                        type="checkbox"
+                        checked={smtpEnabled}
+                        onChange={(e) => setSmtpEnabled(e.target.checked)}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700">Enable SMTP</span>
+                    </label>
+                    <p className="text-xs text-gray-500">Activate email sending via SMTP</p>
+                  </div>
+                </div>
+                
+                {/* Security Warning */}
+                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-800">
+                    <strong>⚠️ Security Note:</strong> Store SMTP passwords securely. For Gmail, use an <a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-900">App Password</a> instead of your main password.
+                  </p>
                 </div>
               </div>
             </div>

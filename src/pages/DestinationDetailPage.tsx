@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  MapPin,
+  AlertCircle,
+  Mountain,
+  Calendar,
+  Thermometer,
+  MapPinned,
+  Home,
+  Activity
+} from 'lucide-react';
 import { supabase, Destination } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -155,11 +165,95 @@ const DestinationDetailPage = () => {
           </div>
 
           {/* Metadata Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-12">
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Region</h3>
-              <p className="text-gray-700">{destination.region}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {/* Basic Info */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-start gap-3">
+                <MapPin className="text-blue-600 flex-shrink-0 mt-1" size={24} />
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Region</h3>
+                  <p className="text-gray-700">{destination.region}</p>
+                </div>
+              </div>
             </div>
+
+            {/* Altitude */}
+            {destination.altitude && (
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <Mountain className="text-purple-600 flex-shrink-0 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Altitude</h3>
+                    <p className="text-gray-700">{destination.altitude.toLocaleString()} meters</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Best Season */}
+            {destination.bestSeason && (
+              <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <Calendar className="text-green-600 flex-shrink-0 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Best Season</h3>
+                    <p className="text-gray-700">{destination.bestSeason}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Temperature */}
+            {destination.averageTemperature && (
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <Thermometer className="text-orange-600 flex-shrink-0 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Temperature</h3>
+                    <p className="text-gray-700">{destination.averageTemperature}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Distance */}
+            {destination.distance && (
+              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <MapPinned className="text-indigo-600 flex-shrink-0 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Distance</h3>
+                    <p className="text-gray-700">{destination.distance} km from nearest city</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Accommodation */}
+            {destination.accommodation && (
+              <div className="bg-gradient-to-br from-pink-50 to-pink-100 border border-pink-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <Home className="text-pink-600 flex-shrink-0 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Accommodation</h3>
+                    <p className="text-gray-700">{destination.accommodation}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Difficulty Level */}
+            {destination.difficulty && (
+              <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <Activity className="text-red-600 flex-shrink-0 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Difficulty Level</h3>
+                    <p className="text-gray-700 font-medium">{destination.difficulty}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -169,6 +263,54 @@ const DestinationDetailPage = () => {
               {destination.description}
             </p>
           </div>
+
+          {/* Attractions */}
+          {destination.attractions && destination.attractions.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900">Main Attractions</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {destination.attractions.map((attraction, index) => (
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-primary-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-gray-700">{attraction}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Activities */}
+          {destination.activities && destination.activities.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900">Activities</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {destination.activities.map((activity, index) => (
+                  <div key={index} className="bg-primary-50 border border-primary-200 rounded-lg p-4 hover:shadow-md transition">
+                    <div className="flex items-start gap-3">
+                      <Activity className="text-primary-600 flex-shrink-0 mt-0.5" size={20} />
+                      <p className="text-gray-700 font-medium">{activity}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Best For */}
+          {destination.bestFor && destination.bestFor.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900">Perfect For</h2>
+              <div className="flex flex-wrap gap-3">
+                {destination.bestFor.map((category, index) => (
+                  <div key={index} className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-3 rounded-full font-medium shadow-md">
+                    ✓ {category}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Call to Action */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg p-8 text-white text-center">

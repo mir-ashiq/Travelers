@@ -13,6 +13,7 @@ import {
   Loader
 } from 'lucide-react';
 import { supabase, TourPackage, Itinerary } from '../lib/supabase';
+import { sendBookingConfirmationEmail } from '../lib/emailService';
 import { toast } from 'react-hot-toast';
 
 const PackageDetailPage = () => {
@@ -98,11 +99,23 @@ const PackageDetailPage = () => {
         source: 'Website'
       };
       
-      const { error } = await supabase
+      const { data: bookingData, error } = await supabase
         .from('bookings')
-        .insert([booking]);
+        .insert([booking])
+        .select();
       
       if (error) throw error;
+      
+      const bookingId = bookingData?.[0]?.id;
+      
+      console.log('Booking created successfully with ID:', bookingId);
+      
+      // Send confirmation email (non-blocking)
+      if (bookingId) {
+        sendBookingConfirmationEmail(name, email, pkg.title, bookingId, travel_date, pkg.price).catch(
+          (err) => console.error('Email sending failed (non-blocking):', err)
+        );
+      }
       
       toast.success('Your booking request has been submitted! We will contact you shortly.');
       form.reset();
@@ -220,7 +233,7 @@ const PackageDetailPage = () => {
             <div className="bg-white rounded-xl shadow-md p-8 mb-8">
               <h2 className="text-2xl font-bold mb-6">Tour Itinerary</h2>
               <div className="space-y-6">
-                {itinerary.map((day, index) => (
+                {itinerary.map((day) => (
                   <div 
                     key={day.id}
                     className="relative pl-8 pb-6 border-l-2 border-primary-200 last:border-0 last:pb-0"

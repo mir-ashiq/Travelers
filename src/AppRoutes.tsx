@@ -34,6 +34,8 @@ import UsersAdmin from './admin/users/UsersPage';
 import NewUserPage from './admin/users/NewUserPage';
 import EditUserPage from './admin/users/EditUserPage';
 import SettingsAdmin from './admin/settings/SettingsPage';
+import NewTestimonialPage from './admin/testimonials/NewTestimonialPage';
+import EditTestimonialPage from './admin/testimonials/EditTestimonialPage';
 import ReportsPage from './admin/reports/ReportsPage';
 import SupportPage from './admin/support/SupportPage';
 import FAQPage from './admin/faq/FAQPage';
@@ -89,6 +91,8 @@ const AppRoutes = () => {
         <Route path="users/new" element={<NewUserPage />} />
         <Route path="users/edit/:id" element={<EditUserPage />} />
         <Route path="testimonials" element={<TestimonialsAdmin />} />
+        <Route path="testimonials/new" element={<NewTestimonialPage />} />
+        <Route path="testimonials/edit/:id" element={<EditTestimonialPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="support" element={<SupportPage />} />
         <Route path="faq" element={<FAQPage />} />

@@ -33,7 +33,7 @@ const ContactPage = () => {
       setLoading(true);
       
       // Create a support ticket
-      const { error } = await supabase
+      const { data: ticketData, error } = await supabase
         .from('support_tickets')
         .insert([{
           subject: formData.subject,
@@ -48,6 +48,12 @@ const ContactPage = () => {
         .select();
       
       if (error) throw error;
+
+      const ticketId = ticketData?.[0]?.id;
+      
+      // TODO: Send emails via backend service or scheduled job
+      // For now, just show success message
+      console.log('Support ticket created with ID:', ticketId);
       
       // Reset form
       setFormData({

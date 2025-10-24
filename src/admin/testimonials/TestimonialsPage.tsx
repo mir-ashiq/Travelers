@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, Check, X, Search, Star, MessageSquare, AlertCircle, Loader } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, X, Search, Star, MessageSquare, AlertCircle, Loader, Plus, Edit } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase, Testimonial } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -103,6 +104,14 @@ const TestimonialsPage = () => {
           <p className="text-gray-600">Review and manage customer testimonials</p>
         </div>
         <div className="flex space-x-2">
+          <Link
+            to="/admin/testimonials/new"
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
+          >
+            <Plus size={18} className="mr-2" />
+            Add Testimonial
+          </Link>
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -206,13 +215,25 @@ const TestimonialsPage = () => {
                     </p>
                   </div>
                   
-                  <div className="mt-6 flex justify-between">
+                  <div className="mt-6 flex justify-between items-center">
                     <button 
                       onClick={() => viewTestimonial(testimonial)}
                       className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                     >
                       View Details
                     </button>
+                    
+                    <Link 
+                      to={`/admin/testimonials/edit/${testimonial.id}`}
+                      className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
+                    >
+                      <Edit size={16} className="mr-1" />
+                      Edit
+                    </Link>
+                  </div>
+                  
+                  <div className="mt-4 flex justify-between">
+                    <div />
                     
                     <div className="flex space-x-2">
                       {testimonial.status === 'pending' && (
