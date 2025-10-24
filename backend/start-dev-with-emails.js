@@ -114,7 +114,7 @@ process.on('SIGINT', () => {
     emailServiceProcess.kill();
   }
   if (serverProcess) {
-    viteProcess.kill();
+    serverProcess.kill();
   }
   process.exit(0);
 });
@@ -126,7 +126,7 @@ process.on('SIGTERM', () => {
     emailServiceProcess.kill();
   }
   if (serverProcess) {
-    viteProcess.kill();
+    serverProcess.kill();
   }
   process.exit(0);
 });
