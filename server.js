@@ -17,7 +17,12 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-dotenv.config();
+// Load .env file if it exists
+if (fs.existsSync('.env')) {
+  dotenv.config();
+} else {
+  console.log('ℹ️  .env file not found. Using environment variables instead.\n');
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,10 +83,14 @@ let emailServiceRunning = false;
 function startEmailService() {
   console.log('📧 Starting email service...\n');
 
-  // Check if .env exists
-  if (!fs.existsSync(path.join(PROJECT_ROOT, '.env'))) {
-    console.warn('⚠️  .env file not found. Email service will not start.');
-    console.warn('   Create .env with SMTP credentials for auto-email sending.\n');
+  // Check if required SMTP environment variables are set
+  const requiredVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD'];
+  const missingVars = requiredVars.filter(v => !process.env[v]);
+
+  if (missingVars.length > 0) {
+    console.warn('⚠️  Missing SMTP environment variables: ' + missingVars.join(', '));
+    console.warn('   Email service will not start.');
+    console.warn('   Set variables in .env or system environment.\n');
     return;
   }
 

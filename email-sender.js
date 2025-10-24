@@ -7,8 +7,14 @@
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
-dotenv.config();
+// Load .env file if it exists
+if (fs.existsSync('.env')) {
+  dotenv.config();
+} else {
+  console.log('ℹ️  .env file not found. Using environment variables instead.\n');
+}
 
 // Initialize Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://ynqceffvnagwrbchnyls.supabase.co';
@@ -16,6 +22,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseKey) {
   console.error('❌ SUPABASE_SERVICE_ROLE_KEY environment variable not set');
+  console.error('   Set it in .env or as a system environment variable');
   process.exit(1);
 }
 
@@ -27,6 +34,13 @@ const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || '';
 const SMTP_FROM = process.env.SMTP_FROM || 'noreply@abctravels.site';
+
+// Validate SMTP configuration
+if (!SMTP_USER || !SMTP_PASSWORD) {
+  console.error('❌ SMTP credentials not configured');
+  console.error('   Set SMTP_USER and SMTP_PASSWORD in .env or environment variables');
+  process.exit(1);
+}
 
 console.log('📧 Email Sender Service Starting...');
 console.log(`SMTP Server: ${SMTP_HOST}:${SMTP_PORT}`);
