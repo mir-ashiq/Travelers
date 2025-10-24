@@ -1,0 +1,17 @@
+services:
+  api:
+    git:
+      github:
+        repo: YOUR_GITHUB_REPO
+        branch: main
+    buildCommand: |
+      cd website && npm install && npm run build && cd ../backend && npm install
+    startCommand: cd backend && npm start:prod
+    ports:
+      - name: http
+        port: 3000
+    env:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"

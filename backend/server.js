@@ -30,7 +30,19 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PROJECT_ROOT = __dirname;
-const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
+
+// Try to find dist folder (check multiple locations)
+let DIST_DIR = path.join(PROJECT_ROOT, 'dist');
+if (!fs.existsSync(DIST_DIR)) {
+  // If not in backend, try parent/website/dist
+  const websiteDist = path.join(PROJECT_ROOT, '..', 'website', 'dist');
+  if (fs.existsSync(websiteDist)) {
+    DIST_DIR = websiteDist;
+    console.log(`📂 Using dist from: ${websiteDist}\n`);
+  } else {
+    console.warn('⚠️  dist/ folder not found. Make sure to run: cd website && npm run build\n');
+  }
+}
 
 console.log(`
 ╔════════════════════════════════════════════════════════╗
