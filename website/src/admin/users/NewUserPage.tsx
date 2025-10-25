@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, Upload, Loader } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 const NewUserPage = () => {
@@ -86,7 +85,7 @@ const NewUserPage = () => {
         throw new Error(errorData.error || 'Failed to create user');
       }
       
-      const result = await response.json();
+      await response.json();
       
       toast.success('User created successfully!');
       navigate('/admin/users');

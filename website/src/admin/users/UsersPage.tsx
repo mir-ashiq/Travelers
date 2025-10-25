@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit2, Trash2, Eye, Plus, Search, Filter, AlertCircle, Mail, Phone, UserPlus, CheckCircle, XCircle, X, Loader } from 'lucide-react';
+import { Edit2, Trash2, Eye, Search, Filter, AlertCircle, Mail, Phone, UserPlus, CheckCircle, XCircle, X, Loader } from 'lucide-react';
 import { supabase, AdminUser } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 

@@ -182,6 +182,7 @@ export type Booking = {
   payment_status: 'Paid' | 'Pending' | 'Refunded';
   source: string;
   assigned_to?: string;
+  notes?: string;
   created_at?: string;
 };
 

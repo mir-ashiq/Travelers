@@ -1,5 +1,6 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { requirePermission, requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -19,8 +20,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
  * Update booking assignment
  * POST /api/bookings/assign
  * Body: { id: number, assigned_to: string }
+ * Permission: bookings_reassign
  */
-router.post('/assign', async (req, res) => {
+router.post('/assign', requirePermission('bookings_reassign'), async (req, res) => {
   try {
     const { id, assigned_to } = req.body;
 
@@ -51,61 +53,13 @@ router.post('/assign', async (req, res) => {
 });
 
 /**
- * Get all bookings
- * GET /api/bookings
- */
-router.get('/', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Supabase error:', error);
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Failed to fetch bookings' });
-  }
-});
-
-/**
- * Get single booking
- * GET /api/bookings/:id
- */
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('❌ Supabase error:', error);
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Failed to fetch booking' });
-  }
-});
-
-/**
  * Update payment for booking
  * POST /api/bookings/update-payment
  * Body: { id: number, payment_status: string, amount?: number }
  * payment_status: 'Paid' | 'Pending' | 'Refunded'
+ * Permission: bookings_update_payment
  */
-router.post('/update-payment', async (req, res) => {
+router.post('/update-payment', requirePermission('bookings_update_payment'), async (req, res) => {
   try {
     const { id, payment_status, amount } = req.body;
 
@@ -154,10 +108,100 @@ router.post('/update-payment', async (req, res) => {
 });
 
 /**
+ * Bulk delete bookings
+ * POST /api/bookings/bulk-delete
+ * Body: { ids: number[] }
+ * Permission: bookings_delete (Admin only)
+ * NOTE: Must be defined BEFORE GET /:id route
+ */
+router.post('/bulk-delete', requirePermission('bookings_delete'), async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No booking IDs provided' });
+    }
+
+    // Bulk delete bookings
+    const { error } = await supabase
+      .from('bookings')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    console.log(`✅ Deleted ${ids.length} booking(s)`);
+    res.json({ 
+      success: true, 
+      message: `${ids.length} booking(s) deleted successfully`,
+      deletedCount: ids.length 
+    });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Failed to delete bookings' });
+  }
+});
+
+/**
+ * Get all bookings
+ * GET /api/bookings
+ * Permission: bookings_view
+ */
+router.get('/', requirePermission('bookings_view'), async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
+/**
+ * Get single booking
+ * GET /api/bookings/:id
+ * Permission: bookings_view
+ */
+router.get('/:id', requirePermission('bookings_view'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Failed to fetch booking' });
+  }
+});
+
+/**
  * Update booking
  * PATCH /api/bookings/:id
+ * Permission: bookings_edit
  */
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requirePermission('bookings_edit'), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -178,6 +222,38 @@ router.patch('/:id', async (req, res) => {
   } catch (error) {
     console.error('❌ Server error:', error);
     res.status(500).json({ error: 'Failed to update booking' });
+  }
+});
+
+/**
+ * Delete single booking
+ * DELETE /api/bookings/:id
+ * Permission: bookings_delete (Admin only)
+ */
+router.delete('/:id', requirePermission('bookings_delete'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Booking ID is required' });
+    }
+
+    // Delete booking
+    const { error } = await supabase
+      .from('bookings')
+      .delete()
+      .eq('id', parseInt(id));
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    console.log(`✅ Booking ${id} deleted`);
+    res.json({ success: true, message: 'Booking deleted successfully' });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Failed to delete booking' });
   }
 });
 

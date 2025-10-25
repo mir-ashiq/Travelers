@@ -358,12 +358,27 @@ const BookingsPage = () => {
     try {
       setLoading(true);
 
-      const { error } = await supabase
-        .from('bookings')
-        .delete()
-        .in('id', selectedBookings);
+      // Call backend DELETE endpoint instead of direct Supabase call
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:3000/api/bookings/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ids: selectedBookings })
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 403) {
+          toast.error('You do not have permission to delete bookings');
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to delete bookings');
+      }
+
+      await response.json();
 
       // Update local state
       setBookings(prevBookings =>
@@ -381,7 +396,7 @@ const BookingsPage = () => {
       toast.success(`${selectedBookings.length} booking(s) deleted successfully`);
     } catch (error) {
       console.error('Error deleting bookings:', error);
-      toast.error('Failed to delete bookings');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete bookings');
     } finally {
       setLoading(false);
     }

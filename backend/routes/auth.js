@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -103,10 +104,12 @@ router.post('/login', async (req, res) => {
 /**
  * Change Password Endpoint
  * POST /api/auth/change-password
+ * Headers: Authorization: Bearer <token>
  * Body: { email, currentPassword, newPassword }
  * Returns: { success: true }
+ * Permission: Must be authenticated user
  */
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', verifyToken, async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
 

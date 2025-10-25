@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import { verifyAdmin, requirePermission, requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -26,37 +27,13 @@ router.options('*', (req, res) => {
 });
 
 /**
- * Middleware: Verify JWT token and admin role
- */
-const verifyAdmin = (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    // Check if user is admin
-    if (decoded.role !== 'Admin') {
-      return res.status(403).json({ error: 'Only admins can perform this action' });
-    }
-
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
-/**
  * GET /api/users
  * List all admin users
  * Headers: Authorization: Bearer <token>
  * Query: ?role=Admin&status=Active&search=email
+ * Permission: users_view
  */
-router.get('/', verifyAdmin, async (req, res) => {
+router.get('/', requirePermission('users_view'), async (req, res) => {
   try {
     const { role, status, search } = req.query;
 
@@ -96,8 +73,9 @@ router.get('/', verifyAdmin, async (req, res) => {
  * GET /api/users/:id
  * Get single user by ID
  * Headers: Authorization: Bearer <token>
+ * Permission: users_view
  */
-router.get('/:id', verifyAdmin, async (req, res) => {
+router.get('/:id', requirePermission('users_view'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -129,7 +107,7 @@ router.get('/:id', verifyAdmin, async (req, res) => {
  * Headers: Authorization: Bearer <token>
  * Body: { name, email, phone, role, password, avatar?, status? }
  */
-router.post('/', verifyAdmin, async (req, res) => {
+router.post('/', requirePermission(['users_create', 'users_change_role'], true), async (req, res) => {
   try {
     const { name, email, phone, role, password, avatar, status } = req.body;
 
@@ -194,11 +172,10 @@ router.post('/', verifyAdmin, async (req, res) => {
 
 /**
  * PUT /api/users/:id
- * Update admin user
- * Headers: Authorization: Bearer <token>
- * Body: { name?, email?, phone?, role?, avatar?, status? }
+ * Update admin user (Admin only)
+ * Permission: users_edit, users_change_role
  */
-router.put('/:id', verifyAdmin, async (req, res) => {
+router.put('/:id', requirePermission(['users_edit', 'users_change_role'], true), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, phone, role, avatar, status } = req.body;
@@ -260,10 +237,10 @@ router.put('/:id', verifyAdmin, async (req, res) => {
 
 /**
  * DELETE /api/users/:id
- * Delete admin user
- * Headers: Authorization: Bearer <token>
+ * Delete admin user (Admin only)
+ * Permission: users_delete
  */
-router.delete('/:id', verifyAdmin, async (req, res) => {
+router.delete('/:id', requirePermission('users_delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -303,8 +280,9 @@ router.delete('/:id', verifyAdmin, async (req, res) => {
  * Toggle user status (Active/Inactive)
  * Headers: Authorization: Bearer <token>
  * Body: { status: 'Active' | 'Inactive' }
+ * Permission: users_edit
  */
-router.patch('/:id/status', verifyAdmin, async (req, res) => {
+router.patch('/:id/status', requirePermission('users_edit'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

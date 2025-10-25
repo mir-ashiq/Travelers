@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Search, Star, MessageSquare, AlertCircle, Loader, Plus, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { supabase, Testimonial } from '../../lib/supabase';
+import { Testimonial } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 const TestimonialsPage = () => {
@@ -11,7 +11,7 @@ const TestimonialsPage = () => {
   const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch testimonials from the database
+  // Fetch testimonials from the backend API
   useEffect(() => {
     fetchTestimonials();
   }, []);
@@ -19,16 +19,27 @@ const TestimonialsPage = () => {
   const fetchTestimonials = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('testimonials')
-        .select('*')
-        .order('id', { ascending: false });
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      const response = await fetch('http://localhost:3000/api/testimonials', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       
-      if (data) {
-        setTestimonials(data);
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to view testimonials');
+        } else {
+          throw new Error(`Failed to fetch testimonials: ${response.statusText}`);
+        }
+        return;
       }
+      
+      const data = await response.json();
+      setTestimonials(data);
     } catch (error) {
       console.error('Error fetching testimonials:', error);
       toast.error('Failed to load testimonials');
@@ -63,12 +74,37 @@ const TestimonialsPage = () => {
   // Handle status change
   const changeStatus = async (id: number, status: 'published' | 'pending' | 'rejected') => {
     try {
-      const { error } = await supabase
-        .from('testimonials')
-        .update({ status })
-        .eq('id', id);
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      // Use the special /approve endpoint if changing to published
+      let url = `http://localhost:3000/api/testimonials/${id}`;
+      let method = 'PUT';
+      let body: { status?: 'published' | 'pending' | 'rejected' } = { status };
+      
+      // If approving (changing to published), use the special approval endpoint
+      if (status === 'published') {
+        url = `http://localhost:3000/api/testimonials/${id}/approve`;
+        method = 'PATCH';
+        body = { status };
+      }
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to update testimonials');
+        } else {
+          throw new Error(`Failed to update testimonial: ${response.statusText}`);
+        }
+        return;
+      }
       
       setTestimonials(testimonials.map(testimonial => 
         testimonial.id === id ? {...testimonial, status} : testimonial

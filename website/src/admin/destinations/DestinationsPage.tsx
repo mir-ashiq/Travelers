@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Edit2, Trash2, Eye, Plus, Search, Filter, AlertCircle, X, Loader } from 'lucide-react';
-import { supabase, Destination } from '../../lib/supabase';
+import { Destination } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 const DestinationsPage = () => {
@@ -12,7 +12,7 @@ const DestinationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
 
-  // Fetch destinations from the database
+  // Fetch destinations from the backend API
   useEffect(() => {
     fetchDestinations();
   }, []);
@@ -20,17 +20,28 @@ const DestinationsPage = () => {
   const fetchDestinations = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('destinations')
-        .select('*')
-        .order('id', { ascending: true });
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      const response = await fetch('http://localhost:3000/api/destinations', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       
-      if (data) {
-        setDestinations(data);
-        setFilteredDestinations(data);
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to view destinations');
+        } else {
+          throw new Error(`Failed to fetch destinations: ${response.statusText}`);
+        }
+        return;
       }
+      
+      const data = await response.json();
+      setDestinations(data);
+      setFilteredDestinations(data);
     } catch (error) {
       console.error('Error fetching destinations:', error);
       toast.error('Failed to load destinations');
@@ -80,12 +91,24 @@ const DestinationsPage = () => {
   const deleteDestination = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this destination?')) {
       try {
-        const { error } = await supabase
-          .from('destinations')
-          .delete()
-          .eq('id', id);
+        const token = localStorage.getItem('authToken');
         
-        if (error) throw error;
+        const response = await fetch(`http://localhost:3000/api/destinations/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            toast.error('You do not have permission to delete destinations');
+          } else {
+            throw new Error(`Failed to delete destination: ${response.statusText}`);
+          }
+          return;
+        }
         
         // Remove from local state
         setDestinations(destinations.filter(dest => dest.id !== id));
@@ -100,12 +123,25 @@ const DestinationsPage = () => {
   // Toggle featured status
   const toggleFeatured = async (id: number, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('destinations')
-        .update({ featured: !currentStatus })
-        .eq('id', id);
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      const response = await fetch(`http://localhost:3000/api/destinations/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ featured: !currentStatus }),
+      });
+      
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to edit destinations');
+        } else {
+          throw new Error(`Failed to update destination: ${response.statusText}`);
+        }
+        return;
+      }
       
       // Update local state
       setDestinations(destinations.map(dest => {

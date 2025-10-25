@@ -30,6 +30,10 @@ if (fs.existsSync('.env')) {
   const { default: authRoutes } = await import('./routes/auth.js');
   const { default: usersRoutes } = await import('./routes/users.js');
   const { default: bookingsRoutes } = await import('./routes/bookings.js');
+  const { default: destinationsRoutes } = await import('./routes/destinations.js');
+  const { default: packagesRoutes } = await import('./routes/packages.js');
+  const { default: galleryRoutes } = await import('./routes/gallery.js');
+  const { default: testimonialRoutes } = await import('./routes/testimonials.js');
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -103,6 +107,10 @@ if (fs.existsSync('.env')) {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/bookings', bookingsRoutes);
+  app.use('/api/destinations', destinationsRoutes);
+  app.use('/api/packages', packagesRoutes);
+  app.use('/api/gallery', galleryRoutes);
+  app.use('/api/testimonials', testimonialRoutes);
 
   /**
    * Health check endpoint

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit2, Trash2, Eye, Plus, Search, Filter, Calendar, Clock, MapPin, Star, AlertCircle, X, Loader } from 'lucide-react';
-import { supabase, TourPackage } from '../../lib/supabase';
+import { Edit2, Trash2, Eye, Plus, Search, Filter, Clock, MapPin, Star, AlertCircle, X, Loader } from 'lucide-react';
+import { TourPackage } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 const PackagesPage = () => {
@@ -13,7 +13,7 @@ const PackagesPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<TourPackage | null>(null);
 
-  // Fetch packages from the database
+  // Fetch packages from the backend API
   useEffect(() => {
     fetchPackages();
   }, []);
@@ -21,17 +21,28 @@ const PackagesPage = () => {
   const fetchPackages = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('packages')
-        .select('*')
-        .order('id', { ascending: true });
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      const response = await fetch('http://localhost:3000/api/packages', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       
-      if (data) {
-        setPackages(data);
-        setFilteredPackages(data);
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to view packages');
+        } else {
+          throw new Error(`Failed to fetch packages: ${response.statusText}`);
+        }
+        return;
       }
+      
+      const data = await response.json();
+      setPackages(data);
+      setFilteredPackages(data);
     } catch (error) {
       console.error('Error fetching packages:', error);
       toast.error('Failed to load packages');
@@ -98,21 +109,23 @@ const PackagesPage = () => {
   const deletePackage = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this package?')) {
       try {
-        const { error } = await supabase
-          .from('packages')
-          .delete()
-          .eq('id', id);
+        const token = localStorage.getItem('authToken');
         
-        if (error) throw error;
+        const response = await fetch(`http://localhost:3000/api/packages/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
         
-        // Also delete related itineraries
-        const { error: itineraryError } = await supabase
-          .from('itineraries')
-          .delete()
-          .eq('package_id', id);
-        
-        if (itineraryError) {
-          console.error('Error deleting itineraries:', itineraryError);
+        if (!response.ok) {
+          if (response.status === 403) {
+            toast.error('You do not have permission to delete packages');
+          } else {
+            throw new Error(`Failed to delete package: ${response.statusText}`);
+          }
+          return;
         }
         
         // Remove from local state
@@ -128,12 +141,25 @@ const PackagesPage = () => {
   // Toggle featured status
   const toggleFeatured = async (id: number, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('packages')
-        .update({ featured: !currentStatus })
-        .eq('id', id);
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      const response = await fetch(`http://localhost:3000/api/packages/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ featured: !currentStatus }),
+      });
+      
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to edit packages');
+        } else {
+          throw new Error(`Failed to update package: ${response.statusText}`);
+        }
+        return;
+      }
       
       // Update local state
       setPackages(packages.map(pkg => {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Edit2, Trash2, Eye, Plus, Search, Filter, X, AlertCircle, Loader } from 'lucide-react';
-import { supabase, GalleryItem } from '../../lib/supabase';
+import { GalleryItem } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 const GalleryPage = () => {
@@ -12,7 +12,7 @@ const GalleryPage = () => {
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch gallery from the database
+  // Fetch gallery from the backend API
   useEffect(() => {
     fetchGallery();
   }, []);
@@ -20,17 +20,28 @@ const GalleryPage = () => {
   const fetchGallery = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('gallery')
-        .select('*')
-        .order('id', { ascending: true });
+      const token = localStorage.getItem('authToken');
       
-      if (error) throw error;
+      const response = await fetch('http://localhost:3000/api/gallery', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       
-      if (data) {
-        setGallery(data);
-        setFilteredGallery(data);
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to view gallery');
+        } else {
+          throw new Error(`Failed to fetch gallery: ${response.statusText}`);
+        }
+        return;
       }
+      
+      const data = await response.json();
+      setGallery(data);
+      setFilteredGallery(data);
     } catch (error) {
       console.error('Error fetching gallery:', error);
       toast.error('Failed to load gallery');
@@ -70,12 +81,24 @@ const GalleryPage = () => {
   const deleteGalleryItem = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this image?')) {
       try {
-        const { error } = await supabase
-          .from('gallery')
-          .delete()
-          .eq('id', id);
+        const token = localStorage.getItem('authToken');
         
-        if (error) throw error;
+        const response = await fetch(`http://localhost:3000/api/gallery/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            toast.error('You do not have permission to delete gallery items');
+          } else {
+            throw new Error(`Failed to delete image: ${response.statusText}`);
+          }
+          return;
+        }
         
         setGallery(gallery.filter(item => item.id !== id));
         toast.success('Image deleted successfully');
