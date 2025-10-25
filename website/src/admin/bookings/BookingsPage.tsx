@@ -23,7 +23,8 @@ import {
   TrendingUp,
   Globe,
   X,
-  UserCheck
+  UserCheck,
+  DollarSign
 } from 'lucide-react';
 import { supabase, Booking } from '../../lib/supabase';
 import { sendStatusUpdateEmail } from '../../lib/emailService';
@@ -45,6 +46,8 @@ const BookingsPage = () => {
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'ascending' | 'descending'} | null>(null);
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
+  const [reassignDropdownOpen, setReassignDropdownOpen] = useState(false);
+  const [paymentDropdownOpen, setPaymentDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Fetch bookings from the database
@@ -279,6 +282,111 @@ const BookingsPage = () => {
     }
   };
 
+  // Bulk export selected bookings as CSV
+  const bulkExportBookings = () => {
+    if (!selectedBookings.length) {
+      toast.error('No bookings selected');
+      return;
+    }
+
+    try {
+      const selectedData = bookings.filter(booking => selectedBookings.includes(booking.id));
+      
+      // Prepare CSV headers
+      const headers = ['ID', 'Customer Name', 'Email', 'Phone', 'Package', 'Travel Date', 'Amount', 'Payment Status', 'Booking Status', 'Assigned To', 'Source', 'Notes'];
+      
+      // Prepare CSV rows
+      const rows = selectedData.map(booking => [
+        booking.id,
+        booking.name,
+        booking.email,
+        booking.phone,
+        booking.package,
+        formatDate(booking.travel_date),
+        booking.amount,
+        booking.payment_status,
+        booking.status,
+        booking.assigned_to || 'Unassigned',
+        booking.source || 'N/A',
+        booking.notes || ''
+      ]);
+      
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `bookings-export-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setSelectedBookings([]);
+      setIsSelectAll(false);
+      setBulkActionOpen(false);
+      
+      toast.success(`${selectedBookings.length} bookings exported successfully`);
+    } catch (error) {
+      console.error('Error exporting bookings:', error);
+      toast.error('Failed to export bookings');
+    }
+  };
+
+  // Bulk delete selected bookings
+  const bulkDeleteBookings = async () => {
+    if (!selectedBookings.length) {
+      toast.error('No bookings selected');
+      return;
+    }
+
+    // Confirm deletion
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedBookings.length} booking(s)? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .in('id', selectedBookings);
+
+      if (error) throw error;
+
+      // Update local state
+      setBookings(prevBookings =>
+        prevBookings.filter(booking => !selectedBookings.includes(booking.id))
+      );
+      setFilteredBookings(prevFiltered =>
+        prevFiltered.filter(booking => !selectedBookings.includes(booking.id))
+      );
+
+      // Reset selection after bulk action
+      setSelectedBookings([]);
+      setIsSelectAll(false);
+      setBulkActionOpen(false);
+
+      toast.success(`${selectedBookings.length} booking(s) deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting bookings:', error);
+      toast.error('Failed to delete bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle single booking selection
   const toggleSelectBooking = (id: number) => {
     setSelectedBookings(prev => 
@@ -358,38 +466,239 @@ const BookingsPage = () => {
     return dayjs(dateString).format('YYYY-MM-DD');
   };
 
-  // TODO: Assign booking - Uncomment when reassignment feature is implemented
-  // const assignBooking = async (id: number, assignee: string) => {
-  //   try {
-  //     const { error } = await supabase
-  //       .from('bookings')
-  //       .update({ assigned_to: assignee })
-  //       .eq('id', id);
-  //     
-  //     if (error) throw error;
-  //     
-  //     // Update local state
-  //     setBookings(bookings.map(booking => {
-  //       if (booking.id === id) {
-  //         return {...booking, assigned_to: assignee};
-  //       }
-  //       return booking;
-  //     }));
-  //     
-  //     // Update selected booking if it's the one being modified
-  //     if (selectedBooking && selectedBooking.id === id) {
-  //       setSelectedBooking({
-  //         ...selectedBooking,
-  //         assigned_to: assignee
-  //       });
-  //     }
-  //     
-  //     toast.success(`Booking assigned to ${assignee}`);
-  //   } catch (error) {
-  //     console.error('Error assigning booking:', error);
-  //     toast.error('Failed to assign booking');
-  //   }
-  // };
+  // Send reminder email to customer
+  const sendReminderEmail = async (booking: Booking) => {
+    try {
+      // Use existing email service to send reminder
+      await sendStatusUpdateEmail(
+        booking.name,
+        booking.email,
+        booking.package,
+        booking.id,
+        booking.travel_date,
+        booking.amount,
+        'Reminder' // Special status for reminder emails
+      );
+      toast.success('Reminder email sent to customer');
+    } catch (error) {
+      console.error('Error sending reminder email:', error);
+      toast.error('Failed to send reminder email');
+    }
+  };
+
+  // Generate invoice PDF
+  const generateInvoice = async (booking: Booking) => {
+    try {
+      // Create invoice HTML content
+      const invoiceHTML = `
+        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+          <h1 style="text-align: center; color: #333;">INVOICE</h1>
+          <hr style="margin: 20px 0;">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+            <div>
+              <h3 style="margin: 0; color: #666;">JKLG Travel Agency</h3>
+              <p style="margin: 5px 0; color: #999;">Professional Travel Services</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="margin: 5px 0;"><strong>Booking ID:</strong> #${booking.id}</p>
+              <p style="margin: 5px 0;"><strong>Date:</strong> ${formatDate(booking.booking_date)}</p>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 30px;">
+            <h4 style="color: #333;">Bill To:</h4>
+            <p style="margin: 5px 0;"><strong>${booking.name}</strong></p>
+            <p style="margin: 5px 0;">Email: ${booking.email}</p>
+            <p style="margin: 5px 0;">Phone: ${booking.phone}</p>
+          </div>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+              <th style="padding: 10px; text-align: left;">Description</th>
+              <th style="padding: 10px; text-align: right;">Amount</th>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 10px;">
+                <strong>${booking.package}</strong><br>
+                Travel Date: ${formatDate(booking.travel_date)}
+              </td>
+              <td style="padding: 10px; text-align: right; font-weight: bold;">₹${booking.amount.toLocaleString('en-IN')}</td>
+            </tr>
+            <tr style="background-color: #f9f9f9; border-top: 2px solid #ddd;">
+              <td style="padding: 10px; text-align: right; font-weight: bold;">TOTAL:</td>
+              <td style="padding: 10px; text-align: right; font-weight: bold; font-size: 16px;">₹${booking.amount.toLocaleString('en-IN')}</td>
+            </tr>
+          </table>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #666;"><strong>Status:</strong> ${booking.status}</p>
+            <p style="margin: 5px 0; color: #666;"><strong>Payment Status:</strong> ${booking.payment_status}</p>
+          </div>
+          
+          <div style="border-top: 1px solid #eee; padding-top: 15px; color: #999; font-size: 12px;">
+            <p style="margin: 5px 0;">Thank you for booking with JKLG Travel Agency!</p>
+            <p style="margin: 5px 0;">For inquiries, contact us at support@jklgtravel.com</p>
+          </div>
+        </div>
+      `;
+      
+      // Create a new window and print it as PDF
+      const printWindow = window.open('', '', 'height=600,width=800');
+      if (printWindow) {
+        printWindow.document.write(invoiceHTML);
+        printWindow.document.close();
+        printWindow.print();
+        toast.success('Invoice opened for printing/saving as PDF');
+      }
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      toast.error('Failed to generate invoice');
+    }
+  };
+
+  // Download invoice as PDF
+  const downloadInvoice = async (booking: Booking) => {
+    try {
+      // Create invoice HTML
+      const invoiceHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Invoice #${booking.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { text-align: center; color: #333; }
+              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+              th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+              th { background-color: #f5f5f5; }
+              .total { font-weight: bold; font-size: 16px; }
+            </style>
+          </head>
+          <body>
+            <h1>INVOICE</h1>
+            <p><strong>Booking ID:</strong> #${booking.id}</p>
+            <p><strong>Date:</strong> ${formatDate(booking.booking_date)}</p>
+            
+            <h3>Bill To:</h3>
+            <p>${booking.name}<br>${booking.email}<br>${booking.phone}</p>
+            
+            <table>
+              <tr>
+                <th>Description</th>
+                <th>Amount</th>
+              </tr>
+              <tr>
+                <td>${booking.package}<br>Travel: ${formatDate(booking.travel_date)}</td>
+                <td>₹${booking.amount.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr>
+                <td class="total">TOTAL:</td>
+                <td class="total">₹${booking.amount.toLocaleString('en-IN')}</td>
+              </tr>
+            </table>
+            
+            <p><strong>Status:</strong> ${booking.status}</p>
+            <p><strong>Payment Status:</strong> ${booking.payment_status}</p>
+          </body>
+        </html>
+      `;
+      
+      // Create blob and download
+      const blob = new Blob([invoiceHTML], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice_${booking.id}_${formatDate(booking.booking_date)}.html`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Invoice downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      toast.error('Failed to download invoice');
+    }
+  };
+
+  // Assign booking to team member
+  const assignBooking = async (id: number, assignee: string) => {
+    try {
+      // Use backend API to bypass Supabase schema cache issues
+      const response = await fetch('http://localhost:3000/api/bookings/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, assigned_to: assignee }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to assign booking');
+      }
+
+      // Update local state
+      setBookings(bookings.map(booking => {
+        if (booking.id === id) {
+          return {...booking, assigned_to: assignee};
+        }
+        return booking;
+      }));
+      
+      // Update selected booking if it's the one being modified
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking({
+          ...selectedBooking,
+          assigned_to: assignee
+        });
+      }
+      
+      toast.success(`Booking assigned to ${assignee}`);
+    } catch (error) {
+      console.error('Error assigning booking:', error);
+      toast.error('Failed to assign booking');
+    }
+  };
+
+  const updatePayment = async (id: number, paymentStatus: 'Paid' | 'Pending' | 'Refunded') => {
+    try {
+      // Use backend API to update payment
+      const response = await fetch('http://localhost:3000/api/bookings/update-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, payment_status: paymentStatus }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update payment');
+      }
+
+      // Update local state
+      setBookings(bookings.map(booking => {
+        if (booking.id === id) {
+          return {...booking, payment_status: paymentStatus};
+        }
+        return booking;
+      }));
+      
+      // Update selected booking if it's the one being modified
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking({
+          ...selectedBooking,
+          payment_status: paymentStatus
+        });
+      }
+      
+      toast.success(`Payment status updated to ${paymentStatus}`);
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      toast.error('Failed to update payment');
+    }
+  };
 
   // Calculate statistics
   const stats = {
@@ -672,12 +981,14 @@ const BookingsPage = () => {
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => bulkExportBookings()}
                   >
                     Export Selected
                   </button>
                   <div className="border-t border-gray-100 my-1"></div>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    onClick={() => bulkDeleteBookings()}
                   >
                     Delete Selected
                   </button>
@@ -851,6 +1162,7 @@ const BookingsPage = () => {
                         <button 
                           className="p-1 text-gray-600 hover:text-gray-900"
                           title="Download Invoice"
+                          onClick={() => downloadInvoice(booking)}
                         >
                           <ArrowDownToLine size={18} />
                         </button>
@@ -1021,13 +1333,93 @@ const BookingsPage = () => {
                         </div>
                         <div className="relative">
                           <button 
-                            onClick={() => {}}
+                            onClick={() => setReassignDropdownOpen(!reassignDropdownOpen)}
                             className="text-primary-600 text-sm hover:underline flex items-center"
                           >
                             Reassign
                             <ChevronDown size={16} className="ml-1" />
                           </button>
-                          {/* Dropdown menu would go here */}
+                          {/* Dropdown menu */}
+                          {reassignDropdownOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white z-20 border border-gray-200">
+                              <div className="py-1">
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  onClick={() => {
+                                    assignBooking(selectedBooking.id, 'Unassigned');
+                                    setReassignDropdownOpen(false);
+                                  }}
+                                >
+                                  Unassigned
+                                </button>
+                                {assignees.map(assignee => (
+                                  <button
+                                    key={assignee}
+                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    onClick={() => {
+                                      assignBooking(selectedBooking.id, assignee);
+                                      setReassignDropdownOpen(false);
+                                    }}
+                                  >
+                                    {assignee}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">Payment</h4>
+                      <div className="bg-white p-4 border border-gray-200 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center">
+                          <DollarSign size={16} className="text-gray-500 mr-2" />
+                          <span>Status: <span className={`font-medium ${selectedBooking.payment_status === 'Paid' ? 'text-green-600' : selectedBooking.payment_status === 'Refunded' ? 'text-red-600' : 'text-yellow-600'}`}>{selectedBooking.payment_status}</span></span>
+                        </div>
+                        <div className="relative">
+                          <button 
+                            onClick={() => setPaymentDropdownOpen(!paymentDropdownOpen)}
+                            className="text-primary-600 text-sm hover:underline flex items-center"
+                          >
+                            Update
+                            <ChevronDown size={16} className="ml-1" />
+                          </button>
+                          {/* Payment Status Dropdown */}
+                          {paymentDropdownOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-40 rounded-md shadow-lg bg-white z-20 border border-gray-200">
+                              <div className="py-1">
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  onClick={() => {
+                                    updatePayment(selectedBooking.id, 'Paid');
+                                    setPaymentDropdownOpen(false);
+                                  }}
+                                >
+                                  Mark as Paid
+                                </button>
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  onClick={() => {
+                                    updatePayment(selectedBooking.id, 'Pending');
+                                    setPaymentDropdownOpen(false);
+                                  }}
+                                >
+                                  Mark as Pending
+                                </button>
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  onClick={() => {
+                                    updatePayment(selectedBooking.id, 'Refunded');
+                                    setPaymentDropdownOpen(false);
+                                  }}
+                                >
+                                  Mark as Refunded
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1093,6 +1485,7 @@ const BookingsPage = () => {
                     <button 
                       type="button" 
                       className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                      onClick={() => sendReminderEmail(selectedBooking)}
                     >
                       <Mail size={18} className="mr-2" />
                       Send Reminder
@@ -1121,6 +1514,7 @@ const BookingsPage = () => {
                 <button 
                   type="button"
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-white hover:bg-gray-700 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => generateInvoice(selectedBooking)}
                 >
                   <FileText size={18} className="mr-2" />
                   Generate Invoice

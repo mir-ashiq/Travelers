@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -20,13 +20,11 @@ import {
   Search,
   FileText,
   BarChart2,
-  AlertTriangle,
-  UserCheck,
-  Upload,
   LifeBuoy,
   Lightbulb,
   Heart
 } from 'lucide-react';
+import { useNotification } from '../contexts/NotificationContext';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,6 +34,7 @@ const AdminLayout = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { notifications } = useNotification();
   
   // Apply dark mode class to body
   useEffect(() => {
@@ -68,14 +67,6 @@ const AdminLayout = () => {
     { name: 'FAQ', path: '/admin/faq', icon: HelpCircle },
     { name: 'Blog', path: '/admin/blog', icon: FileText },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
-  ];
-
-  const notifications = [
-    { id: 1, title: 'New Booking', message: 'Kashmir Bliss package booked by Rahul Sharma', time: '10 min ago' },
-    { id: 2, title: 'New Testimonial', message: 'New testimonial submitted for approval', time: '1 hour ago' },
-    { id: 3, title: 'Support Ticket', message: 'New support request from Priya Patel', time: '3 hours ago' },
-    { id: 4, title: 'System Update', message: 'New version available - v1.2.3', time: '1 day ago' },
-    { id: 5, title: 'Payment Received', message: 'Payment of ₹34,999 received for booking #1052', time: '2 days ago' },
   ];
 
   const isActive = (path: string) => {
@@ -299,13 +290,19 @@ const AdminLayout = () => {
                         key={notification.id} 
                         className={`p-4 ${darkMode ? 'border-gray-700' : 'border-gray-100'} border-b hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors`}
                       >
-                        <div className="font-medium text-sm">{notification.title}</div>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <div className="flex items-start gap-2">
+                          <div className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                            notification.type === 'success' ? 'bg-green-100 text-green-800' :
+                            notification.type === 'error' ? 'bg-red-100 text-red-800' :
+                            notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {notification.type}
+                          </div>
+                        </div>
+                        <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {notification.message}
                         </p>
-                        <div className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          {notification.time}
-                        </div>
                       </div>
                     ))}
                   </div>

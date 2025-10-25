@@ -29,20 +29,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-  // Initialize auth on mount
+  // Define refreshToken callback first (before it's used in useEffect)
+  const refreshToken = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
+      // Verify and refresh token
+      // In production, call your refresh API
+      const userData = localStorage.getItem('userData');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      // Don't throw - just silently fail
+      setUser(null);
+    }
+  }, []);
+
+  // Initialize auth on mount - restore from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Check for existing session
         const token = localStorage.getItem('authToken');
         if (token) {
           setSessionToken(token);
-          // Verify token is still valid
-          await refreshToken();
+          // Restore user data from localStorage
+          const userData = localStorage.getItem('userData');
+          if (userData) {
+            setUser(JSON.parse(userData));
+          }
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
         localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
       } finally {
         setLoading(false);
       }
@@ -55,17 +80,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!sessionToken) return;
 
-    const refreshInterval = setInterval(async () => {
-      try {
-        await refreshToken();
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        logout();
-      }
+    const refreshInterval = setInterval(() => {
+      refreshToken();
     }, 50 * 60 * 1000); // Refresh every 50 minutes
 
     return () => clearInterval(refreshInterval);
-  }, [sessionToken]);
+  }, [sessionToken, refreshToken]);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -150,23 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     } finally {
       setLoading(false);
-    }
-  }, []);
-
-  const refreshToken = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('No token found');
-
-      // Verify and refresh token
-      // In production, call your refresh API
-      const userData = localStorage.getItem('userData');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      throw error;
     }
   }, []);
 
