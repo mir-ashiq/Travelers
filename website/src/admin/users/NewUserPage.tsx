@@ -53,48 +53,46 @@ const NewUserPage = () => {
     try {
       setLoading(true);
       
-      // In a real app, you would use Supabase Auth to create a user
-      // Here we're just saving to the admin_users table directly
-      
-      // Check if email already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('email', formData.email)
-        .maybeSingle();
-      
-      if (checkError) throw checkError;
-      
-      if (existingUser) {
-        toast.error('A user with this email already exists');
-        setLoading(false);
+      // Get auth token from localStorage
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        toast.error('No authentication token found. Please log in again.');
         return;
       }
       
-      // Insert new user
-      const { data, error } = await supabase
-        .from('admin_users')
-        .insert([
-          {
+      // Call backend API to create user with password hashing
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/users`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
+            password: formData.password,
             avatar: formData.avatar || null,
             status: formData.status
-            // In a real app, you would hash the password before storing it
-            // And we're not storing passwords in this table - we'd use Supabase Auth
-          }
-        ])
-        .select();
+          })
+        }
+      );
       
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+      
+      const result = await response.json();
       
       toast.success('User created successfully!');
       navigate('/admin/users');
     } catch (error) {
       console.error('Error creating user:', error);
-      toast.error('Failed to create user');
+      toast.error(error instanceof Error ? error.message : 'Failed to create user');
     } finally {
       setLoading(false);
     }

@@ -71,25 +71,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
 
-      // Demo authentication - replace with real API call
-      if (email === 'admin@jklgtravel.com' && password === 'admin123') {
-        const token = 'demo_token_' + Date.now();
-        const userData: User = {
-          id: '1',
-          email,
-          name: 'Admin User',
-          role: 'admin',
-          lastLogin: new Date().toISOString(),
-        };
+      // Call backend authentication API
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('userData', JSON.stringify(userData));
-        setSessionToken(token);
-        setUser(userData);
-        toast.success('Logged in successfully');
-      } else {
-        throw new Error('Invalid credentials');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
       }
+
+      const { token, user } = await response.json();
+
+      const userData: User = {
+        id: user.id.toString(),
+        email: user.email,
+        name: user.name,
+        role: user.role as User['role'],
+        lastLogin: new Date().toISOString(),
+      };
+
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userData', JSON.stringify(userData));
+      setSessionToken(token);
+      setUser(userData);
+      toast.success('Logged in successfully');
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error instanceof Error ? error.message : 'Login failed');

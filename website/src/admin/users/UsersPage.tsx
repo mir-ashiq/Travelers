@@ -83,18 +83,33 @@ const UsersPage = () => {
   const deleteUser = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        const { error } = await supabase
-          .from('admin_users')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
-        
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          toast.error('No authentication token found. Please log in again.');
+          return;
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/users/${id}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete user');
+        }
+
         setUsers(users.filter(user => user.id !== id));
         toast.success('User deleted successfully');
       } catch (error) {
         console.error('Error deleting user:', error);
-        toast.error('Failed to delete user');
+        toast.error(error instanceof Error ? error.message : 'Failed to delete user');
       }
     }
   };
@@ -102,15 +117,31 @@ const UsersPage = () => {
   // Toggle user status
   const toggleUserStatus = async (id: number, currentStatus: 'Active' | 'Inactive') => {
     try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        toast.error('No authentication token found. Please log in again.');
+        return;
+      }
+
       const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
       
-      const { error } = await supabase
-        .from('admin_users')
-        .update({ status: newStatus })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/users/${id}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update status');
+      }
+
       // Update local state
       setUsers(users.map(user => {
         if (user.id === id) {

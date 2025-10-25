@@ -16,6 +16,9 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import cors from 'cors';
+import authRoutes from './routes/auth.js';
+import usersRoutes from './routes/users.js';
 
 // Load .env file if it exists
 if (fs.existsSync('.env')) {
@@ -54,9 +57,47 @@ console.log(`
 `);
 
 /**
- * Serve static files (built React app)
+ * Middleware
  */
-app.use(express.static(DIST_DIR));
+// CRITICAL: Set CORS headers FIRST before all other middleware
+app.all('*', (req, res, next) => {
+  const origin = req.get('Origin');
+  const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174'];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.set('Access-Control-Allow-Credentials', 'true');
+    res.set('Access-Control-Max-Age', '3600');
+  }
+  
+  // For OPTIONS preflight requests, send 200 immediately
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
+// Additional cors package for extra safety
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+/**
+ * API Routes
+ */
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 
 /**
  * Health check endpoint
@@ -78,6 +119,11 @@ app.get('/api/email-status', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+/**
+ * Serve static files (built React app)
+ */
+app.use(express.static(DIST_DIR));
 
 /**
  * SPA fallback - serve index.html for all routes
