@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase';
 
 export interface GeneralSettings {
   siteName: string;
-  siteEmail: string;
-  sitePhone: string;
+  siteEmail?: string;
+  sitePhone?: string;
+  siteEmails?: string[];
+  sitePhones?: string[];
   siteAddress: string;
 }
 
@@ -32,6 +34,8 @@ const defaultSettings: SiteSettings = {
     siteName: 'JKLG Travel Agency',
     siteEmail: 'info@jklgtravel.com',
     sitePhone: '+91 98765 43210',
+    siteEmails: ['info@jklgtravel.com'],
+    sitePhones: ['+91 98765 43210'],
     siteAddress: '123 Tourism Road, Srinagar, Jammu & Kashmir, India'
   },
   social: {

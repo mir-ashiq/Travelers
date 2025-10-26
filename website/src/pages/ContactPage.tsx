@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, Phone, Mail, Clock, Send, MessageSquare, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { useSettings } from '../contexts/SettingsContext';
 
 const ContactPage = () => {
+  const { settings } = useSettings();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -103,8 +105,7 @@ const ContactPage = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Our Address</h3>
               <p className="text-gray-600">
-                123 Tourism Road, Srinagar<br />
-                Jammu & Kashmir, India
+                {settings?.general.siteAddress || '123 Tourism Road, Srinagar, Jammu & Kashmir, India'}
               </p>
             </div>
 
@@ -113,14 +114,20 @@ const ContactPage = () => {
                 <Phone size={32} />
               </div>
               <h3 className="text-xl font-semibold mb-2">Call Us</h3>
-              <p className="text-gray-600">
-                <a href="tel:+919876543210" className="hover:text-primary-600 transition">
-                  +91 98765 43210
-                </a>
-                <br />
-                <a href="tel:+919876543211" className="hover:text-primary-600 transition">
-                  +91 98765 43211
-                </a>
+              <p className="text-gray-600 space-y-1">
+                {Array.isArray(settings?.general.sitePhones) && settings.general.sitePhones.length > 0 ? (
+                  settings.general.sitePhones.map((phone: string, index: number) => (
+                    <div key={`contact-phone-${index}`}>
+                      <a href={`tel:${phone}`} className="hover:text-primary-600 transition">
+                        {phone}
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <a href={`tel:${settings?.general.sitePhone || '+919876543210'}`} className="hover:text-primary-600 transition">
+                    {settings?.general.sitePhone || '+91 98765 43210'}
+                  </a>
+                )}
               </p>
             </div>
 
@@ -129,14 +136,20 @@ const ContactPage = () => {
                 <Mail size={32} />
               </div>
               <h3 className="text-xl font-semibold mb-2">Email Us</h3>
-              <p className="text-gray-600">
-                <a href="mailto:info@jklgtravel.com" className="hover:text-primary-600 transition">
-                  info@jklgtravel.com
-                </a>
-                <br />
-                <a href="mailto:bookings@jklgtravel.com" className="hover:text-primary-600 transition">
-                  bookings@jklgtravel.com
-                </a>
+              <p className="text-gray-600 space-y-1">
+                {Array.isArray(settings?.general.siteEmails) && settings.general.siteEmails.length > 0 ? (
+                  settings.general.siteEmails.map((email: string, index: number) => (
+                    <div key={`contact-email-${index}`}>
+                      <a href={`mailto:${email}`} className="hover:text-primary-600 transition">
+                        {email}
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <a href={`mailto:${settings?.general.siteEmail || 'info@jklgtravel.com'}`} className="hover:text-primary-600 transition">
+                    {settings?.general.siteEmail || 'info@jklgtravel.com'}
+                  </a>
+                )}
               </p>
             </div>
 

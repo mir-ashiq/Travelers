@@ -9,8 +9,8 @@ const SettingsPage = () => {
   const [saveMessage, setSaveMessage] = useState('');
   
   const [siteName, setSiteName] = useState('JKLG Travel Agency');
-  const [siteEmail, setSiteEmail] = useState('info@jklgtravel.com');
-  const [sitePhone, setSitePhone] = useState('+91 98765 43210');
+  const [siteEmails, setSiteEmails] = useState(['info@jklgtravel.com']);
+  const [sitePhones, setSitePhones] = useState(['+91 98765 43210']);
   const [siteAddress, setSiteAddress] = useState('123 Tourism Road, Srinagar, Jammu & Kashmir, India');
   const [heroSlides, setHeroSlides] = useState([
     {
@@ -104,8 +104,20 @@ const SettingsPage = () => {
       
       if (generalData?.value) {
         setSiteName(generalData.value.siteName || 'JKLG Travel Agency');
-        setSiteEmail(generalData.value.siteEmail || 'info@jklgtravel.com');
-        setSitePhone(generalData.value.sitePhone || '+91 98765 43210');
+        
+        // Support both new (array) and old (single) formats
+        if (Array.isArray(generalData.value.siteEmails)) {
+          setSiteEmails(generalData.value.siteEmails);
+        } else {
+          setSiteEmails([generalData.value.siteEmail || 'info@jklgtravel.com']);
+        }
+        
+        if (Array.isArray(generalData.value.sitePhones)) {
+          setSitePhones(generalData.value.sitePhones);
+        } else {
+          setSitePhones([generalData.value.sitePhone || '+91 98765 43210']);
+        }
+        
         setSiteAddress(generalData.value.siteAddress || '123 Tourism Road, Srinagar, Jammu & Kashmir, India');
       }
 
@@ -226,7 +238,7 @@ const SettingsPage = () => {
         .upsert(
           {
             key: 'general_settings',
-            value: { siteName, siteEmail, sitePhone, siteAddress }
+            value: { siteName, siteEmails, sitePhones, siteAddress }
           },
           { onConflict: 'key' }
         );
@@ -516,45 +528,107 @@ const SettingsPage = () => {
               
               <div>
                 <h2 className="text-lg font-medium mb-4">Contact Information</h2>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div>
-                    <label htmlFor="siteEmail" className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address
+                
+                {/* Email Addresses */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email Addresses
                     </label>
-                    <input 
-                      type="email" 
-                      id="siteEmail" 
-                      value={siteEmail}
-                      onChange={(e) => setSiteEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+                    <button 
+                      onClick={() => setSiteEmails([...siteEmails, ''])}
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm inline-flex items-center"
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Add Email
+                    </button>
                   </div>
-                  
-                  <div>
-                    <label htmlFor="sitePhone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number
+                  <div className="space-y-2">
+                    {siteEmails.map((email, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input 
+                          type="email" 
+                          value={email}
+                          onChange={(e) => {
+                            const newEmails = [...siteEmails];
+                            newEmails[index] = e.target.value;
+                            setSiteEmails(newEmails);
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          placeholder="email@example.com"
+                        />
+                        {siteEmails.length > 1 && (
+                          <button 
+                            onClick={() => setSiteEmails(siteEmails.filter((_, i) => i !== index))}
+                            className="text-red-600 hover:text-red-900 px-3 py-2"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Phone Numbers */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Phone Numbers
                     </label>
-                    <input 
-                      type="text" 
-                      id="sitePhone" 
-                      value={sitePhone}
-                      onChange={(e) => setSitePhone(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+                    <button 
+                      onClick={() => setSitePhones([...sitePhones, ''])}
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm inline-flex items-center"
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Add Phone
+                    </button>
                   </div>
-                  
-                  <div className="md:col-span-2">
-                    <label htmlFor="siteAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                      Office Address
-                    </label>
-                    <textarea 
-                      id="siteAddress" 
-                      rows={3}
-                      value={siteAddress}
-                      onChange={(e) => setSiteAddress(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+                  <div className="space-y-2">
+                    {sitePhones.map((phone, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input 
+                          type="tel" 
+                          value={phone}
+                          onChange={(e) => {
+                            const newPhones = [...sitePhones];
+                            newPhones[index] = e.target.value;
+                            setSitePhones(newPhones);
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          placeholder="+91 9876543210"
+                        />
+                        {sitePhones.length > 1 && (
+                          <button 
+                            onClick={() => setSitePhones(sitePhones.filter((_, i) => i !== index))}
+                            className="text-red-600 hover:text-red-900 px-3 py-2"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
+                </div>
+                
+                {/* Office Address */}
+                <div>
+                  <label htmlFor="siteAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                    Office Address
+                  </label>
+                  <textarea 
+                    id="siteAddress" 
+                    rows={3}
+                    value={siteAddress}
+                    onChange={(e) => setSiteAddress(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                
+                <div className="mt-4 bg-blue-50 border-l-4 border-blue-400 p-4">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> You can add multiple phone numbers and email addresses. They will be displayed throughout the website including footer, contact page, and booking confirmations.
+                  </p>
                 </div>
               </div>
               

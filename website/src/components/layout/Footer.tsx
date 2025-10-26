@@ -158,25 +158,52 @@ const Footer = () => {
             <h3 className="font-heading font-semibold text-lg mb-4">Contact Us</h3>
             <ul className="space-y-3">
               <li className="flex">
-                <MapPin size={20} className="mr-3 text-primary-400 flex-shrink-0" />
+                <MapPin size={20} className="mr-3 text-primary-400 flex-shrink-0 mt-1" />
                 <span className="text-gray-400">
                   {settings.general.siteAddress}
                 </span>
               </li>
+              
+              {/* Display all phone numbers */}
+              {Array.isArray(settings.general.sitePhones) && settings.general.sitePhones.length > 0 ? (
+                settings.general.sitePhones.map((phone, index) => (
+                  <li key={`phone-${index}`} className="flex">
+                    <Phone size={20} className="mr-3 text-primary-400 flex-shrink-0 mt-0.5" />
+                    <a href={`tel:${phone}`} className="text-gray-400 hover:text-white transition-colors">
+                      {phone}
+                    </a>
+                  </li>
+                ))
+              ) : (
+                <li className="flex">
+                  <Phone size={20} className="mr-3 text-primary-400 flex-shrink-0 mt-0.5" />
+                  <a href={`tel:${settings.general.sitePhone}`} className="text-gray-400 hover:text-white transition-colors">
+                    {settings.general.sitePhone}
+                  </a>
+                </li>
+              )}
+              
+              {/* Display all email addresses */}
+              {Array.isArray(settings.general.siteEmails) && settings.general.siteEmails.length > 0 ? (
+                settings.general.siteEmails.map((email, index) => (
+                  <li key={`email-${index}`} className="flex">
+                    <Mail size={20} className="mr-3 text-primary-400 flex-shrink-0 mt-0.5" />
+                    <a href={`mailto:${email}`} className="text-gray-400 hover:text-white transition-colors">
+                      {email}
+                    </a>
+                  </li>
+                ))
+              ) : (
+                <li className="flex">
+                  <Mail size={20} className="mr-3 text-primary-400 flex-shrink-0 mt-0.5" />
+                  <a href={`mailto:${settings.general.siteEmail}`} className="text-gray-400 hover:text-white transition-colors">
+                    {settings.general.siteEmail}
+                  </a>
+                </li>
+              )}
+              
               <li className="flex">
-                <Phone size={20} className="mr-3 text-primary-400 flex-shrink-0" />
-                <a href={`tel:${settings.general.sitePhone}`} className="text-gray-400 hover:text-white transition-colors">
-                  {settings.general.sitePhone}
-                </a>
-              </li>
-              <li className="flex">
-                <Mail size={20} className="mr-3 text-primary-400 flex-shrink-0" />
-                <a href={`mailto:${settings.general.siteEmail}`} className="text-gray-400 hover:text-white transition-colors">
-                  {settings.general.siteEmail}
-                </a>
-              </li>
-              <li className="flex">
-                <Clock size={20} className="mr-3 text-primary-400 flex-shrink-0" />
+                <Clock size={20} className="mr-3 text-primary-400 flex-shrink-0 mt-0.5" />
                 <span className="text-gray-400">
                   Mon-Sat: 9:00 AM - 7:00 PM
                 </span>
