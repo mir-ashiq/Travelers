@@ -31,26 +31,36 @@ const Footer = () => {
           {/* Company Info */}
           <div>
             <div className="flex items-center mb-4">
-              <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M2 12h20"/>
-                  <path d="M12 2a10 10 0 1 0 10 10"/>
-                  <path d="M12 2v10l4-4"/>
-                  <path d="M12 2v10l-4-4"/>
-                  <path d="M8.5 7a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z"/>
-                </svg>
+              <div className={`flex items-center justify-center rounded-full ${
+                settings?.removeLogoBg ? '' : 'bg-white'
+              }`}
+              style={{
+                width: `${settings?.logoSize || 40}px`,
+                height: `${settings?.logoSize || 40}px`
+              }}>
+                {settings?.logo ? (
+                  <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#3B82F6"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2 12h20"/>
+                    <path d="M12 2a10 10 0 1 0 10 10"/>
+                    <path d="M12 2v10l4-4"/>
+                    <path d="M12 2v10l-4-4"/>
+                    <path d="M8.5 7a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z"/>
+                  </svg>
+                )}
               </div>
-              <span className="ml-2 font-heading font-bold text-xl">JKLG Travel</span>
+              <span className="ml-2 font-heading font-bold text-xl">{settings?.general?.siteName || 'JKLG Travel'}</span>
             </div>
             <p className="text-gray-400 mb-4">
               Discover the breathtaking beauty of Jammu, Kashmir, Ladakh, and Gurez with our expertly crafted tour packages.

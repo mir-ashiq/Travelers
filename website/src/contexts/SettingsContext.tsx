@@ -8,6 +8,8 @@ export interface GeneralSettings {
   siteEmails?: string[];
   sitePhones?: string[];
   siteAddress: string;
+  logoSize?: number; // in pixels
+  removeLogoBg?: boolean; // if true, don't show circular background
 }
 
 export interface SocialSettings {
@@ -21,6 +23,8 @@ export interface SiteSettings {
   general: GeneralSettings;
   social: SocialSettings;
   logo?: string;
+  logoSize?: number;
+  removeLogoBg?: boolean;
 }
 
 interface SettingsContextType {
@@ -75,10 +79,21 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       // Process the data
       if (data && Array.isArray(data)) {
         const generalSettings = data.find((item: any) => item.key === 'general_settings');
-        const socialSettings = data.find((item: any) => item.key === 'social_settings');
+        const socialSettings = data.find((item: any) => item.key === 'social_links');
 
         if (generalSettings?.value) {
           newSettings.general = generalSettings.value;
+          // Extract logo URL from general settings
+          if (generalSettings.value.logoUrl) {
+            newSettings.logo = generalSettings.value.logoUrl;
+          }
+          // Extract logo display options
+          if (generalSettings.value.logoSize) {
+            newSettings.logoSize = generalSettings.value.logoSize;
+          }
+          if (generalSettings.value.removeLogoBg !== undefined) {
+            newSettings.removeLogoBg = generalSettings.value.removeLogoBg;
+          }
         }
 
         if (socialSettings?.value) {

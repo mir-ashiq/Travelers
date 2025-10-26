@@ -34,6 +34,7 @@ if (fs.existsSync('.env')) {
   const { default: packagesRoutes } = await import('./routes/packages.js');
   const { default: galleryRoutes } = await import('./routes/gallery.js');
   const { default: testimonialRoutes } = await import('./routes/testimonials.js');
+  const { default: settingsRoutes } = await import('./routes/settings.js');
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -111,6 +112,7 @@ if (fs.existsSync('.env')) {
   app.use('/api/packages', packagesRoutes);
   app.use('/api/gallery', galleryRoutes);
   app.use('/api/testimonials', testimonialRoutes);
+  app.use('/api/settings', settingsRoutes);
 
   /**
    * Health check endpoint
@@ -139,9 +141,13 @@ if (fs.existsSync('.env')) {
   app.use(express.static(DIST_DIR));
 
   /**
-   * SPA fallback - serve index.html for all routes
+   * SPA fallback - serve index.html for all routes (except /api/*)
    */
   app.get('*', (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
     res.sendFile(path.join(DIST_DIR, 'index.html'));
   });
 

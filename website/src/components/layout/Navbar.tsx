@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { Menu, X, Globe, ChevronDown } from 'lucide-react';
+import { SettingsContext } from '../../contexts/SettingsContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { settings } = useContext(SettingsContext);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,31 +47,39 @@ const Navbar = () => {
     <nav className={navbarClasses}>
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link to="/" className="flex items-center" onClick={closeMenu}>
-          <div className={`w-10 h-10 flex items-center justify-center rounded-full ${
-            scrolled ? 'bg-primary-600' : 'bg-white'
-          }`}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={scrolled ? "white" : "#3B82F6"}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 12h20"/>
-              <path d="M12 2a10 10 0 1 0 10 10"/>
-              <path d="M12 2v10l4-4"/>
-              <path d="M12 2v10l-4-4"/>
-              <path d="M8.5 7a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z"/>
-            </svg>
+          <div className={`flex items-center justify-center rounded-full ${
+            settings?.removeLogoBg ? '' : (scrolled ? 'bg-primary-600' : 'bg-white')
+          }`}
+          style={{
+            width: `${settings?.logoSize || 40}px`,
+            height: `${settings?.logoSize || 40}px`
+          }}>
+            {settings?.logo ? (
+              <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={scrolled ? "white" : "#3B82F6"}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 12h20"/>
+                <path d="M12 2a10 10 0 1 0 10 10"/>
+                <path d="M12 2v10l4-4"/>
+                <path d="M12 2v10l-4-4"/>
+                <path d="M8.5 7a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z"/>
+              </svg>
+            )}
           </div>
           <span className={`ml-2 font-heading font-bold text-xl ${
             scrolled ? 'text-gray-800' : 'text-white'
           }`}>
-            JKLG Travel
+            {settings?.general?.siteName || 'JKLG Travel'}
           </span>
         </Link>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Upload, X, Plus, Edit2, Trash2, AlertCircle, Loader } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -9,6 +10,10 @@ const SettingsPage = () => {
   const [saveMessage, setSaveMessage] = useState('');
   
   const [siteName, setSiteName] = useState('JKLG Travel Agency');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoSize, setLogoSize] = useState(40);
+  const [removeLogoBg, setRemoveLogoBg] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [siteEmails, setSiteEmails] = useState(['info@jklgtravel.com']);
   const [sitePhones, setSitePhones] = useState(['+91 98765 43210']);
   const [siteAddress, setSiteAddress] = useState('123 Tourism Road, Srinagar, Jammu & Kashmir, India');
@@ -95,133 +100,91 @@ const SettingsPage = () => {
     try {
       setLoading(true);
       
-      // Load general settings
-      const { data: generalData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'general_settings')
-        .single();
+      // Fetch all settings from API
+      const response = await fetch(`${API_BASE_URL}/settings`);
+      if (!response.ok) throw new Error('Failed to load settings');
       
-      if (generalData?.value) {
-        setSiteName(generalData.value.siteName || 'JKLG Travel Agency');
+      const settings = await response.json();
+
+      // Load general settings
+      if (settings.general_settings) {
+        const generalData = settings.general_settings;
+        setSiteName(generalData.siteName || 'JKLG Travel Agency');
+        setLogoUrl(generalData.logoUrl || '');
         
         // Support both new (array) and old (single) formats
-        if (Array.isArray(generalData.value.siteEmails)) {
-          setSiteEmails(generalData.value.siteEmails);
+        if (Array.isArray(generalData.siteEmails)) {
+          setSiteEmails(generalData.siteEmails);
         } else {
-          setSiteEmails([generalData.value.siteEmail || 'info@jklgtravel.com']);
+          setSiteEmails([generalData.siteEmail || 'info@jklgtravel.com']);
         }
         
-        if (Array.isArray(generalData.value.sitePhones)) {
-          setSitePhones(generalData.value.sitePhones);
+        if (Array.isArray(generalData.sitePhones)) {
+          setSitePhones(generalData.sitePhones);
         } else {
-          setSitePhones([generalData.value.sitePhone || '+91 98765 43210']);
+          setSitePhones([generalData.sitePhone || '+91 98765 43210']);
         }
         
-        setSiteAddress(generalData.value.siteAddress || '123 Tourism Road, Srinagar, Jammu & Kashmir, India');
+        setSiteAddress(generalData.siteAddress || '123 Tourism Road, Srinagar, Jammu & Kashmir, India');
+        setLogoSize(generalData.logoSize || 40);
+        setRemoveLogoBg(generalData.removeLogoBg || false);
       }
 
       // Load social links
-      const { data: socialData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'social_links')
-        .single();
-      
-      if (socialData?.value) {
-        setSocialLinks(socialData.value);
+      if (settings.social_links) {
+        setSocialLinks(settings.social_links);
       }
 
       // Load display settings
-      const { data: displayData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'display_settings')
-        .single();
-      
-      if (displayData?.value) {
-        setDisplaySettings(displayData.value);
+      if (settings.display_settings) {
+        setDisplaySettings(settings.display_settings);
       }
 
-      // Load hero slides if stored
-      const { data: heroData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'hero_slides')
-        .single();
-      
-      if (heroData?.value && Array.isArray(heroData.value) && heroData.value.length > 0) {
-        setHeroSlides(heroData.value);
+      // Load hero slides
+      if (settings.hero_slides && Array.isArray(settings.hero_slides) && settings.hero_slides.length > 0) {
+        setHeroSlides(settings.hero_slides);
       }
 
       // Load SEO settings
-      const { data: seoData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'seo_settings')
-        .single();
-      
-      if (seoData?.value) {
-        setMetaTitle(seoData.value.metaTitle || 'JKLG Travel Agency | Explore Jammu, Kashmir, Ladakh, and Gurez');
-        setMetaDescription(seoData.value.metaDescription || 'Discover the breathtaking beauty of Jammu, Kashmir, Ladakh, and Gurez with our expertly crafted tour packages. Create unforgettable memories with JKLG Travel Agency.');
+      if (settings.seo_settings) {
+        setMetaTitle(settings.seo_settings.metaTitle || 'JKLG Travel Agency | Explore Jammu, Kashmir, Ladakh, and Gurez');
+        setMetaDescription(settings.seo_settings.metaDescription || 'Discover the breathtaking beauty of Jammu, Kashmir, Ladakh, and Gurez with our expertly crafted tour packages. Create unforgettable memories with JKLG Travel Agency.');
       }
 
       // Load email templates
-      const { data: emailTemplatesData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'email_templates')
-        .single();
-      
-      if (emailTemplatesData?.value && Array.isArray(emailTemplatesData.value)) {
-        setEmailTemplates(emailTemplatesData.value);
+      if (settings.email_templates && Array.isArray(settings.email_templates)) {
+        setEmailTemplates(settings.email_templates);
       }
 
       // Load email config
-      const { data: emailConfigData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'email_config')
-        .single();
-      
-      if (emailConfigData?.value) {
-        setFromName(emailConfigData.value.fromName || 'JKLG Travel');
-        setFromEmail(emailConfigData.value.fromEmail || 'bookings@jklgtravel.com');
-        setEmailFooter(emailConfigData.value.emailFooter || '© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India');
+      if (settings.email_config) {
+        setFromName(settings.email_config.fromName || 'JKLG Travel');
+        setFromEmail(settings.email_config.fromEmail || 'bookings@jklgtravel.com');
+        setEmailFooter(settings.email_config.emailFooter || '© 2025 JKLG Travel Agency. All rights reserved. 123 Tourism Road, Srinagar, Jammu & Kashmir, India');
       }
 
       // Load SMTP config
-      const { data: smtpData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'smtp_config')
-        .single();
-      
-      if (smtpData?.value) {
-        setSmtpHost(smtpData.value.smtpHost || 'smtp.gmail.com');
-        setSmtpPort(smtpData.value.smtpPort || 587);
-        setSmtpUser(smtpData.value.smtpUser || 'your-email@gmail.com');
-        setSmtpPassword(smtpData.value.smtpPassword || '');
-        setSmtpFromEmail(smtpData.value.smtpFromEmail || 'noreply@jklgtravel.com');
-        setUseTLS(smtpData.value.useTLS !== false);
-        setSmtpEnabled(smtpData.value.enabled || false);
+      if (settings.smtp_config) {
+        setSmtpHost(settings.smtp_config.smtpHost || 'smtp.gmail.com');
+        setSmtpPort(settings.smtp_config.smtpPort || 587);
+        setSmtpUser(settings.smtp_config.smtpUser || 'your-email@gmail.com');
+        setSmtpPassword(settings.smtp_config.smtpPassword || '');
+        setSmtpFromEmail(settings.smtp_config.smtpFromEmail || 'noreply@jklgtravel.com');
+        setUseTLS(settings.smtp_config.useTLS !== false);
+        setSmtpEnabled(settings.smtp_config.enabled || false);
       }
 
       // Load UI preferences
-      const { data: uiData } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'ui_preferences')
-        .single();
-      
-      if (uiData?.value) {
-        setTheme(uiData.value.theme || 'light');
-        setLayout(uiData.value.layout || 'compact');
-        setFontSize(uiData.value.fontSize || 'medium');
-        setContrast(uiData.value.contrast || 'normal');
+      if (settings.ui_preferences) {
+        setTheme(settings.ui_preferences.theme || 'light');
+        setLayout(settings.ui_preferences.layout || 'compact');
+        setFontSize(settings.ui_preferences.fontSize || 'medium');
+        setContrast(settings.ui_preferences.contrast || 'normal');
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+      setSaveMessage('❌ Error loading settings');
+      setTimeout(() => setSaveMessage(''), 3000);
     } finally {
       setLoading(false);
     }
@@ -232,104 +195,27 @@ const SettingsPage = () => {
       setSaving(true);
       setSaveMessage('Saving...');
 
-      // Save general settings
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'general_settings',
-            value: { siteName, siteEmails, sitePhones, siteAddress }
-          },
-          { onConflict: 'key' }
-        );
+      const settingsToSave = {
+        general_settings: { siteName, logoUrl, siteEmails, sitePhones, siteAddress, logoSize, removeLogoBg },
+        social_links: socialLinks,
+        display_settings: displaySettings,
+        hero_slides: heroSlides,
+        seo_settings: { metaTitle, metaDescription },
+        email_templates: emailTemplates,
+        email_config: { fromName, fromEmail, emailFooter },
+        smtp_config: { smtpHost, smtpPort, smtpUser, smtpPassword, smtpFromEmail, useTLS, enabled: smtpEnabled },
+        ui_preferences: { theme, layout, fontSize, contrast }
+      };
 
-      // Save social links
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'social_links',
-            value: socialLinks
-          },
-          { onConflict: 'key' }
-        );
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settingsToSave)
+      });
 
-      // Save display settings
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'display_settings',
-            value: displaySettings
-          },
-          { onConflict: 'key' }
-        );
-
-      // Save hero slides
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'hero_slides',
-            value: heroSlides
-          },
-          { onConflict: 'key' }
-        );
-
-      // Save SEO settings
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'seo_settings',
-            value: { metaTitle, metaDescription }
-          },
-          { onConflict: 'key' }
-        );
-
-      // Save email templates
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'email_templates',
-            value: emailTemplates
-          },
-          { onConflict: 'key' }
-        );
-
-      // Save email config
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'email_config',
-            value: { fromName, fromEmail, emailFooter }
-          },
-          { onConflict: 'key' }
-        );
-
-      // Save SMTP config
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'smtp_config',
-            value: { smtpHost, smtpPort, smtpUser, smtpPassword, smtpFromEmail, useTLS, enabled: smtpEnabled }
-          },
-          { onConflict: 'key' }
-        );
-
-      // Save UI preferences
-      await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'ui_preferences',
-            value: { theme, layout, fontSize, contrast }
-          },
-          { onConflict: 'key' }
-        );
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
 
       setSaveMessage('✅ Settings saved successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
@@ -339,6 +225,78 @@ const SettingsPage = () => {
       setTimeout(() => setSaveMessage(''), 3000);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setSaveMessage('❌ File size must be less than 5MB');
+        setTimeout(() => setSaveMessage(''), 3000);
+        return;
+      }
+
+      // Check file type
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        setSaveMessage('❌ Only image files are allowed (jpeg, png, gif, webp)');
+        setTimeout(() => setSaveMessage(''), 3000);
+        return;
+      }
+
+      setIsUploadingLogo(true);
+      setSaveMessage('Uploading logo...');
+
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      const response = await fetch(`${API_BASE_URL}/settings/logo`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload logo');
+      }
+
+      const data = await response.json();
+      setLogoUrl(data.logoUrl);
+      setSaveMessage('✅ Logo uploaded successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      setSaveMessage('❌ Error uploading logo');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    try {
+      setIsUploadingLogo(true);
+      setSaveMessage('Deleting logo...');
+
+      const response = await fetch(`${API_BASE_URL}/settings/logo`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete logo');
+      }
+
+      setLogoUrl('');
+      setSaveMessage('✅ Logo deleted successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('Logo delete error:', error);
+      setSaveMessage('❌ Error deleting logo');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -498,30 +456,88 @@ const SettingsPage = () => {
                       Company Logo
                     </label>
                     <div className="flex items-center">
-                      <div className="w-16 h-16 flex items-center justify-center bg-primary-600 text-white rounded-full mr-4">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="32"
-                          height="32"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M2 12h20"/>
-                          <path d="M12 2a10 10 0 1 0 10 10"/>
-                          <path d="M12 2v10l4-4"/>
-                          <path d="M12 2v10l-4-4"/>
-                          <path d="M8.5 7a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z"/>
-                        </svg>
+                      <div className="w-16 h-16 flex items-center justify-center bg-primary-600 text-white rounded-full mr-4 overflow-hidden">
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="Company logo" className="w-full h-full object-cover" />
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="32"
+                            height="32"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M2 12h20"/>
+                            <path d="M12 2a10 10 0 1 0 10 10"/>
+                            <path d="M12 2v10l4-4"/>
+                            <path d="M12 2v10l-4-4"/>
+                            <path d="M8.5 7a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z"/>
+                          </svg>
+                        )}
                       </div>
-                      <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm inline-flex items-center">
-                        <Upload size={16} className="mr-2" />
-                        Upload New Logo
-                      </button>
+                      <div className="flex gap-2">
+                        <label className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm inline-flex items-center cursor-pointer">
+                          <Upload size={16} className="mr-2" />
+                          {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                          <input 
+                            type="file" 
+                            id="logo"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            disabled={isUploadingLogo}
+                            className="hidden"
+                          />
+                        </label>
+                        {logoUrl && (
+                          <button 
+                            onClick={handleDeleteLogo}
+                            disabled={isUploadingLogo}
+                            className="bg-red-200 hover:bg-red-300 text-red-700 px-4 py-2 rounded-lg text-sm inline-flex items-center disabled:opacity-50"
+                          >
+                            <X size={16} className="mr-2" />
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Logo Display Options */}
+                    {logoUrl && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 p-4 bg-blue-50 rounded-lg">
+                        <div>
+                          <label htmlFor="logoSize" className="block text-sm font-medium text-gray-700 mb-2">
+                            Logo Size (pixels): {logoSize}px
+                          </label>
+                          <input 
+                            type="range" 
+                            id="logoSize" 
+                            min="20" 
+                            max="100" 
+                            value={logoSize}
+                            onChange={(e) => setLogoSize(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                          <div className="text-xs text-gray-600 mt-1">Adjust the size of your logo in the navbar and footer</div>
+                        </div>
+
+                        <div>
+                          <label className="flex items-center mt-8">
+                            <input 
+                              type="checkbox" 
+                              checked={removeLogoBg}
+                              onChange={(e) => setRemoveLogoBg(e.target.checked)}
+                              className="w-4 h-4 rounded border-gray-300"
+                            />
+                            <span className="ml-3 text-sm font-medium text-gray-700">Remove logo background</span>
+                          </label>
+                          <div className="text-xs text-gray-600 mt-1">Uncheck to show background behind logo, check to display logo without background</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
