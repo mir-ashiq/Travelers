@@ -89,6 +89,11 @@ async function sendEmail(emailRecord) {
 
     if (updateError) {
       console.error(`❌ Error updating email status: ${updateError.message}`);
+      // Try to reset status back to pending if update fails
+      await supabase
+        .from('email_history')
+        .update({ status: 'pending' })
+        .eq('id', emailRecord.id);
       return false;
     }
 
@@ -114,13 +119,56 @@ async function sendEmail(emailRecord) {
 }
 
 /**
+ * Cleanup abandoned processing emails (from previous crashed runs)
+ * If an email is stuck in 'processing' status for more than 5 minutes, reset it to 'pending'
+ */
+async function cleanupAbandonedEmails() {
+  try {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    
+    const { data: abandonedEmails, error: fetchError } = await supabase
+      .from('email_history')
+      .select('*')
+      .eq('status', 'processing')
+      .lt('updated_at', fiveMinutesAgo);
+
+    if (fetchError) {
+      console.error(`❌ Error fetching abandoned emails: ${fetchError.message}`);
+      return;
+    }
+
+    if (!abandonedEmails || abandonedEmails.length === 0) {
+      return; // No abandoned emails to clean up
+    }
+
+    console.log(`\n🧹 Cleaning up ${abandonedEmails.length} abandoned email(s) stuck in processing...`);
+
+    for (const email of abandonedEmails) {
+      const { error: updateError } = await supabase
+        .from('email_history')
+        .update({ status: 'pending' })
+        .eq('id', email.id);
+
+      if (updateError) {
+        console.error(`❌ Error resetting email ${email.id}: ${updateError.message}`);
+      } else {
+        console.log(`✅ Reset email ${email.id} back to pending`);
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error in cleanup: ${error.message}`);
+  }
+}
+
+/**
  * Process all pending emails
  */
 async function processPendingEmails() {
   try {
     console.log('\n🔍 Fetching pending emails...');
 
-    // Get all pending emails
+    // Get all pending emails with a lock mechanism
+    // We use a transaction-like approach by immediately marking as 'processing'
     const { data: pendingEmails, error: fetchError } = await supabase
       .from('email_history')
       .select('*')
@@ -145,6 +193,19 @@ async function processPendingEmails() {
 
     // Send each email
     for (const email of pendingEmails) {
+      // Mark email as 'processing' to avoid duplicate sends
+      const { error: lockError } = await supabase
+        .from('email_history')
+        .update({ status: 'processing' })
+        .eq('id', email.id)
+        .eq('status', 'pending'); // Only update if still pending
+
+      if (lockError) {
+        console.error(`❌ Error locking email ${email.id}: ${lockError.message}`);
+        continue;
+      }
+
+      // Now send the email
       const success = await sendEmail(email);
       if (success) {
         successCount++;
@@ -187,6 +248,9 @@ async function main() {
     process.exit(1);
   }
 
+  // Clean up any abandoned emails from previous crashes
+  await cleanupAbandonedEmails();
+
   // Process emails once
   await processPendingEmails();
 
@@ -194,6 +258,7 @@ async function main() {
   console.log('\n⏰ Setting up to process emails every 30 seconds...');
   setInterval(async () => {
     console.log('\n🔄 Running scheduled email check...');
+    await cleanupAbandonedEmails();
     await processPendingEmails();
   }, 30000); // 30 seconds
 }
