@@ -1,4 +1,5 @@
 import { AuthProvider } from './contexts/AuthContext';
+import { CustomerProvider } from './contexts/CustomerContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -8,11 +9,13 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <NotificationProvider>
-          <SettingsProvider>
-            <AppRoutes />
-          </SettingsProvider>
-        </NotificationProvider>
+        <CustomerProvider>
+          <NotificationProvider>
+            <SettingsProvider>
+              <AppRoutes />
+            </SettingsProvider>
+          </NotificationProvider>
+        </CustomerProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

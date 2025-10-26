@@ -17,7 +17,117 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
- * Update booking assignment
+ * Create booking (Public - for guests and customers)
+ * POST /api/bookings
+ * Body: {
+ *   package_id: number,
+ *   customer_email: string,
+ *   customer_name: string,
+ *   customer_phone: string,
+ *   travel_date: string (ISO date),
+ *   number_of_guests: number,
+ *   special_requests?: string,
+ *   customer_id?: string (optional - if registered customer)
+ * }
+ */
+router.post('/', async (req, res) => {
+  try {
+    const { 
+      package_id, 
+      customer_email, 
+      customer_name, 
+      customer_phone, 
+      travel_date, 
+      number_of_guests,
+      special_requests,
+      customer_id
+    } = req.body;
+
+    // Validation
+    if (!package_id || !customer_email || !customer_name || !customer_phone || !travel_date || !number_of_guests) {
+      return res.status(400).json({
+        error: 'Missing required fields: package_id, customer_email, customer_name, customer_phone, travel_date, number_of_guests'
+      });
+    }
+
+    // Get package details to calculate price
+    const { data: pkg, error: pkgError } = await supabase
+      .from('packages')
+      .select('id, title, price_per_person, duration')
+      .eq('id', package_id)
+      .single();
+
+    if (pkgError || !pkg) {
+      return res.status(404).json({ error: 'Package not found' });
+    }
+
+    // Calculate total price
+    const totalPrice = pkg.price_per_person * number_of_guests;
+
+    // Create booking
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .insert([{
+        package_id,
+        customer_id: customer_id || null,
+        customer_name,
+        customer_email,
+        customer_phone,
+        travel_date,
+        number_of_guests,
+        special_requests: special_requests || null,
+        amount: totalPrice,
+        status: 'Pending',
+        payment_status: 'Pending',
+        created_at: new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (bookingError) {
+      console.error('Booking creation error:', bookingError);
+      return res.status(400).json({ error: 'Failed to create booking' });
+    }
+
+    console.log(`✅ Booking created: ${booking.id}`);
+    res.status(201).json({ 
+      success: true, 
+      booking,
+      message: 'Booking created successfully. Proceed to payment.'
+    });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Failed to create booking' });
+  }
+});
+
+/**
+ * Get single booking (Public - no auth required)
+ * GET /api/bookings/:id
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ booking: data });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Failed to fetch booking' });
+  }
+});
+
+/**
  * POST /api/bookings/assign
  * Body: { id: number, assigned_to: string }
  * Permission: bookings_reassign
@@ -146,7 +256,7 @@ router.post('/bulk-delete', requirePermission('bookings_delete'), async (req, re
 });
 
 /**
- * Get all bookings
+ * Get all bookings (Admin only)
  * GET /api/bookings
  * Permission: bookings_view
  */
@@ -170,37 +280,7 @@ router.get('/', requirePermission('bookings_view'), async (req, res) => {
 });
 
 /**
- * Get single booking
- * GET /api/bookings/:id
- * Permission: bookings_view
- */
-router.get('/:id', requirePermission('bookings_view'), async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('❌ Supabase error:', error);
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Failed to fetch booking' });
-  }
-});
-
-/**
- * Update booking
- * PATCH /api/bookings/:id
- * Permission: bookings_edit
- */
+ * Update booking (Admin only)
 router.patch('/:id', requirePermission('bookings_edit'), async (req, res) => {
   try {
     const { id } = req.params;

@@ -2,6 +2,16 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
+// Customer Auth Pages
+import CustomerSignup from './pages/CustomerSignup';
+import CustomerLogin from './pages/CustomerLogin';
+import VerifyEmail from './pages/VerifyEmail';
+import CustomerDashboard from './pages/CustomerDashboard';
+import GuestPaymentPage from './pages/GuestPaymentPage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import ProtectedRoute from './components/ProtectedRoute';
+
 // Pages
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -76,6 +86,31 @@ const FrontendLayout = ({ children }: { children: React.ReactNode }) => (
 const AppRoutes = () => {
   return (
     <Routes>
+      {/* Customer Auth Routes */}
+      <Route path="/signup" element={<FrontendLayout><CustomerSignup /></FrontendLayout>} />
+      <Route path="/login" element={<FrontendLayout><CustomerLogin /></FrontendLayout>} />
+      <Route path="/verify-email" element={<FrontendLayout><VerifyEmail /></FrontendLayout>} />
+      <Route path="/forgot-password" element={<FrontendLayout><ForgotPassword /></FrontendLayout>} />
+      <Route path="/reset-password" element={<FrontendLayout><ResetPassword /></FrontendLayout>} />
+      <Route
+        path="/customer-dashboard"
+        element={
+          <ProtectedRoute>
+            <FrontendLayout>
+              <CustomerDashboard />
+            </FrontendLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payment/:bookingId"
+        element={
+          <FrontendLayout>
+            <GuestPaymentPage />
+          </FrontendLayout>
+        }
+      />
+
       {/* Admin Routes */}
       <Route path="/admin/login" element={<Login />} />
       <Route
